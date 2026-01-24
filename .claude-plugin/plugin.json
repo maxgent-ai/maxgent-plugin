@@ -1,0 +1,10 @@
+{
+  "name": "maxgent",
+  "description": "A Claude Code plugin for vibe-driven operations and developer workflow automation",
+  "version": "0.16.0",
+  "author": {
+    "name": "Maxgent AI"
+  },
+  "repository": "https://github.com/maxgent-ai/maxgent-plugin",
+  "license": "MIT"
+}
