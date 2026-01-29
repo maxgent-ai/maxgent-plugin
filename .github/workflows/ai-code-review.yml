@@ -1,0 +1,86 @@
+---
+name: Codex Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  codex:
+    # 只在同仓库 PR 时运行（排除 fork PR，fork 无法访问 secrets）
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      review: ${{ steps.codex.outputs.final-message }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.event.pull_request.base.ref }}
+
+      - name: Run Codex Review
+        id: codex
+        uses: openai/codex-action@086169432f1d2ab2f4057540b1754d550f6a1189 # v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          safety-strategy: drop-sudo
+          sandbox: workspace-write
+          prompt: |
+            审查这个 PR 引入的变更。请用中文输出。
+
+            Base branch: origin/${{ github.event.pull_request.base.ref }}
+            Head commit: ${{ github.event.pull_request.head.sha }}
+
+            使用 `git diff origin/${{ github.event.pull_request.base.ref }}...HEAD` 查看变更。
+
+            重点关注：
+            1. 潜在的 bug 或逻辑错误
+            2. 安全漏洞
+            3. 性能问题
+            4. 代码是否简洁（有无冗余代码、过度抽象）
+            5. 设计是否合理（架构、模块划分、接口设计）
+            6. 是否影响其他模块（检查是否改变了现有模块的行为、接口或依赖）
+            7. 向后兼容性（API 变更是否会破坏现有调用方）
+            8. 测试覆盖（新增代码是否有对应测试、边界情况是否覆盖）
+
+            要求：
+            - 简洁、可操作
+            - 跳过代码风格细节（格式、命名等）
+            - 使用 markdown 格式
+            - 全部用中文输出
+
+  post_feedback:
+    needs: codex
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Submit Review
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          REVIEW_CONTENT: ${{ needs.codex.outputs.review }}
+        with:
+          script: |
+            const reviewContent = process.env.REVIEW_CONTENT || '审查结果为空';
+            const body = `## 🤖 Codex 代码审查
+
+            ${reviewContent}
+
+            ---
+            <sub>由 [OpenAI Codex](https://openai.com/codex/) 生成 | [查看 workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})</sub>`;
+
+            await github.rest.pulls.createReview({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              body: body,
+              event: 'REQUEST_CHANGES'
+            });
