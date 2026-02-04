@@ -150,6 +150,7 @@ uv run skills/browser/client.py create main "https://..."     # Create and navig
 uv run skills/browser/client.py goto main "https://..."       # Navigate existing page
 uv run skills/browser/client.py close main                    # Close a page
 uv run skills/browser/client.py info main                     # Get page URL and title
+uv run skills/browser/client.py release main                  # Release page (call when done!)
 ```
 
 ### Element Interaction
@@ -190,4 +191,46 @@ EOF
 ```
 
 The `page` object is a standard Playwright Page.
+
+## Important: Release Page After All Operations
+
+> ⚠️ **CRITICAL**: Call `release` command when you finish ALL operations on a page!
+
+When browser skill operates on a page, Max UI shows an "Agent Operating" indicator and locks user interaction. You **must** call `release` when your entire operation sequence is complete:
+
+```bash
+# Example workflow
+uv run skills/browser/client.py create main "https://example.com"
+uv run skills/browser/client.py wait-load main
+uv run skills/browser/client.py snapshot main
+uv run skills/browser/client.py click main "button.submit"
+uv run skills/browser/client.py wait-load main
+
+# When ALL operations are done, release the page
+uv run skills/browser/client.py release main
+```
+
+**Why this matters:**
+- Without `release`, the indicator stays for 30 seconds (timeout fallback)
+- User interaction is blocked during operations
+- Calling `release` immediately unlocks user control
+
+**When to call release:**
+- After completing a task (e.g., filled a form, extracted data)
+- Before reporting results to the user
+- NOT after each individual command - only when the entire operation sequence is done
+
+**For Python scripts:**
+
+```python
+from client import BrowserClient
+
+client = BrowserClient()
+try:
+    page = client.get_playwright_page("main")
+    # ... perform ALL operations ...
+finally:
+    client.release_page("main")  # REQUIRED: Clear indicator
+    client.disconnect()
+```
 

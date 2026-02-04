@@ -247,6 +247,18 @@ class BrowserClient:
 
         return resp.ok
 
+    def release_page(self, name: str) -> bool:
+        """Release a page (notify that skill has finished operating).
+
+        This should be called after completing browser operations to immediately
+        clear the operating indicator in Max UI.
+        """
+        try:
+            resp = requests.post(f"{self.base_url}/pages/{name}/release", timeout=2)
+            return resp.ok
+        except requests.RequestException:
+            return False  # Non-critical, timeout will handle cleanup
+
     def get_playwright_page(self, name: str) -> Page:
         """Get Playwright Page object"""
         # Check cache first
@@ -860,6 +872,20 @@ def cmd_info(client: BrowserClient, args):
         return 1
 
 
+def cmd_release(client: BrowserClient, args):
+    """Release a page (notify Max that operations are complete)."""
+    if not client._check_server():
+        print("Error: Browser server is not running.")
+        return 1
+
+    if client.release_page(args.name):
+        print(f"Released page: {args.name}")
+        return 0
+    else:
+        print(f"Error: Failed to release page '{args.name}'")
+        return 1
+
+
 def main():
     parser = argparse.ArgumentParser(description="Browser automation client for Max")
     parser.add_argument(
@@ -969,6 +995,10 @@ def main():
     p_info = subparsers.add_parser("info", help="Get page information")
     p_info.add_argument("name", help="Page name")
 
+    # release
+    p_release = subparsers.add_parser("release", help="Release page (notify Max operations complete)")
+    p_release.add_argument("name", help="Page name")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -999,6 +1029,7 @@ def main():
         "wait-load": cmd_wait_load,
         "close": cmd_close,
         "info": cmd_info,
+        "release": cmd_release,
     }
 
     return commands[args.command](client, args)
