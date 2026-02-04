@@ -251,8 +251,7 @@ class BrowserClient:
         """Release a page (notify that skill has finished operating).
 
         This should be called after completing browser operations to immediately
-        clear the operating indicator in Max UI. If not called, the indicator
-        will auto-clear after 5 seconds.
+        clear the operating indicator in Max UI.
         """
         try:
             resp = requests.post(f"{self.base_url}/pages/{name}/release", timeout=2)
