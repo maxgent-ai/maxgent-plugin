@@ -69,7 +69,7 @@ if (INPUT_IMAGE) {
 
 // 使用 fetch 调用 API
 try {
-  const response = await fetch('https://internal.infquest.com/api/openrouter/v1/chat/completions', {
+  const response = await fetch('https://api.maxgent.ai/api/openrouter/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

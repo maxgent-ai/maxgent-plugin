@@ -19,7 +19,7 @@ import requests
 from PIL import Image
 
 # 配置
-BASE_URL = "https://internal.infquest.com/api/aihubmix/v1"
+BASE_URL = "https://api.maxgent.ai/api/aihubmix/v1"
 
 # 模型映射
 MODEL_MAP = {
