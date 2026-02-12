@@ -108,8 +108,21 @@ def normalize_frame_mode(frame_mode: str) -> str:
     return mode if mode in FRAME_MODE_VALUES else "auto"
 
 
+_SIZE_MAP: dict[str, tuple[str, str]] = {
+    "1920x1080": ("16:9", "1080p"),
+    "1080x1920": ("9:16", "1080p"),
+    "1280x720": ("16:9", "720p"),
+    "720x1280": ("9:16", "720p"),
+}
+
+
 def parse_size_to_aspect_and_resolution(size: str) -> tuple[str, str]:
     value = size.strip().lower()
+
+    exact = _SIZE_MAP.get(value)
+    if exact:
+        return exact
+
     if "x" in value:
         try:
             w_text, h_text = value.split("x", 1)
@@ -118,7 +131,7 @@ def parse_size_to_aspect_and_resolution(size: str) -> tuple[str, str]:
             if width <= 0 or height <= 0:
                 raise ValueError("invalid dimensions")
             ratio = "16:9" if width >= height else "9:16"
-            resolution = "1080p" if max(width, height) >= 1080 else "720p"
+            resolution = "1080p" if min(width, height) > 720 else "720p"
             return ratio, resolution
         except ValueError:
             pass
