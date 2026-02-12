@@ -1,244 +1,381 @@
 #!/usr/bin/env -S uv run
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["requests", "pillow"]
+# dependencies = ["requests"]
 # ///
 
 """
-AI Video Generator - 生成 AI 视频
-支持 Veo 3.1 (文生视频) 和 Sora 2 Pro (图生视频)
+AI Video Generator (FAL API Proxy)
+
+Features:
+- High-quality routing by default (Veo 3.1 / Sora 2 Pro / Kling v3 Pro)
+- First/last frame generation mode
+- Backward compatibility with existing positional arguments
 """
 
+from __future__ import annotations
+
+import argparse
 import os
+import pathlib
 import sys
 import time
-import argparse
-from pathlib import Path
+from dataclasses import dataclass
+from typing import Any
 
-import requests
-from PIL import Image
 
-# 配置
-BASE_URL = "https://api.maxgent.ai/api/aihubmix/v1"
+CURRENT_DIR = pathlib.Path(__file__).resolve().parent
+SHARED_DIR = CURRENT_DIR.parent / "_shared"
+sys.path.insert(0, str(SHARED_DIR))
 
-# 模型映射
-MODEL_MAP = {
-    "veo-3.1": "veo-3.1-generate-preview",
-    "sora-2-pro": "sora-2-pro",
+from fal_client import (  # noqa: E402
+    FalClientError,
+    download_to_file,
+    fal_queue_result,
+    fal_queue_submit,
+    fal_queue_wait,
+    fal_upload_file,
+)
+
+
+@dataclass
+class Route:
+    model_path: str
+    route_type: str  # text | image | first_last
+
+
+MODEL_ALIASES = {
+    "auto": "auto",
+    "veo-3.1": "veo",
+    "veo3.1": "veo",
+    "veo": "veo",
+    "sora-2-pro": "sora",
+    "sora2-pro": "sora",
+    "sora": "sora",
+    "kling-v3-pro": "kling_pro",
+    "kling-pro": "kling_pro",
+    "kling": "kling_pro",
+    "kling-v3-standard": "kling_standard",
+    "kling-standard": "kling_standard",
 }
 
-# 支持图片输入的模型
-IMAGE_SUPPORTED_MODELS = ["sora-2-pro"]
+FRAME_MODE_VALUES = {"auto", "start", "start-end"}
+
+ROUTES = {
+    "veo_text": Route("fal-ai/veo3.1", "text"),
+    "veo_image": Route("fal-ai/veo3.1/image-to-video", "image"),
+    "veo_first_last": Route("fal-ai/veo3.1/first-last-frame-to-video", "first_last"),
+    "veo_first_last_fast": Route("fal-ai/veo3.1/fast/first-last-frame-to-video", "first_last"),
+    "sora_text": Route("fal-ai/sora-2/text-to-video/pro", "text"),
+    "sora_image": Route("fal-ai/sora-2/image-to-video/pro", "image"),
+    "kling_pro_text": Route("fal-ai/kling-video/v3/pro/text-to-video", "text"),
+    "kling_pro_image": Route("fal-ai/kling-video/v3/pro/image-to-video", "image"),
+    "kling_standard_text": Route("fal-ai/kling-video/v3/standard/text-to-video", "text"),
+    "kling_standard_image": Route("fal-ai/kling-video/v3/standard/image-to-video", "image"),
+}
 
 
-def parse_size(size: str) -> tuple[int, int] | None:
-    """解析尺寸字符串，如 '1280x720' -> (1280, 720)"""
-    if "x" in size.lower():
-        parts = size.lower().split("x")
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="AI Video Generator (FAL API Proxy)")
+    parser.add_argument("model", nargs="?", default="auto", help="Model alias: auto/veo-3.1/sora-2-pro/kling-v3-pro")
+    parser.add_argument("prompt", nargs="?", default="A cat sitting on a windowsill", help="Video prompt")
+    parser.add_argument("size", nargs="?", default="720P", help="Resolution or WxH, e.g. 720P / 1280x720")
+    parser.add_argument("seconds", nargs="?", default="8", help="Duration in seconds (or with suffix, e.g. 8s)")
+    parser.add_argument("output_dir", nargs="?", default=".", help="Output directory")
+    parser.add_argument("input_image", nargs="?", default="", help="Backward-compatible start image path")
+
+    parser.add_argument("--frame-mode", default="auto", help="Frame mode: auto|start|start-end")
+    parser.add_argument("--start-image", default="", help="Start frame image path or URL")
+    parser.add_argument("--end-image", default="", help="End frame image path or URL")
+    parser.add_argument("--fast-first-last", action="store_true", help="Use Veo fast first/last route")
+    parser.add_argument("--generate-audio", default="true", help="Enable audio when model supports it")
+    parser.add_argument("--enhance-prompt", default="true", help="Enable prompt enhancement when supported")
+    parser.add_argument("--negative-prompt", default="", help="Negative prompt (Kling)")
+    parser.add_argument("--cfg-scale", type=float, default=None, help="CFG scale (Kling)")
+    parser.add_argument("--poll-interval", type=int, default=3, help="Queue polling interval seconds")
+    parser.add_argument("--max-wait", type=int, default=20 * 60, help="Queue max wait seconds")
+    return parser.parse_args()
+
+
+def as_bool(value: str | bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def normalize_frame_mode(frame_mode: str) -> str:
+    mode = frame_mode.strip().lower()
+    return mode if mode in FRAME_MODE_VALUES else "auto"
+
+
+_SIZE_MAP: dict[str, tuple[str, str]] = {
+    "1920x1080": ("16:9", "1080p"),
+    "1080x1920": ("9:16", "1080p"),
+    "1280x720": ("16:9", "720p"),
+    "720x1280": ("9:16", "720p"),
+}
+
+
+def parse_size_to_aspect_and_resolution(size: str) -> tuple[str, str]:
+    value = size.strip().lower()
+
+    exact = _SIZE_MAP.get(value)
+    if exact:
+        return exact
+
+    if "x" in value:
         try:
-            return int(parts[0]), int(parts[1])
+            w_text, h_text = value.split("x", 1)
+            width = int(w_text)
+            height = int(h_text)
+            if width <= 0 or height <= 0:
+                raise ValueError("invalid dimensions")
+            ratio = "16:9" if width >= height else "9:16"
+            resolution = "1080p" if min(width, height) > 720 else "720p"
+            return ratio, resolution
         except ValueError:
             pass
+
+    if value in {"1080p", "1080"}:
+        return "16:9", "1080p"
+    if value in {"720p", "720"}:
+        return "16:9", "720p"
+    return "16:9", "720p"
+
+
+def parse_duration(seconds: str, model_path: str) -> str:
+    raw = seconds.strip().lower()
+    if not raw:
+        raw = "8"
+    if raw.endswith("s"):
+        numeric = raw[:-1]
+    else:
+        numeric = raw
+    try:
+        int(numeric)
+    except ValueError as exc:
+        raise ValueError(f"Invalid duration: {seconds}") from exc
+
+    if "veo3.1" in model_path:
+        return f"{numeric}s"
+    return numeric
+
+
+def resolve_model_key(model: str) -> str:
+    normalized = model.strip().lower()
+    return MODEL_ALIASES.get(normalized, normalized)
+
+
+def resolve_route(model_key: str, has_start: bool, has_end: bool, frame_mode: str, fast_first_last: bool) -> Route:
+    if frame_mode == "start-end" and not (has_start and has_end):
+        raise ValueError("frame-mode=start-end requires both --start-image and --end-image")
+
+    if has_end or frame_mode == "start-end":
+        if model_key in {"kling_pro", "kling_standard"}:
+            return ROUTES["kling_pro_image"] if model_key == "kling_pro" else ROUTES["kling_standard_image"]
+        if model_key == "sora":
+            # Sora does not guarantee end-frame control. Switch to Veo first/last.
+            return ROUTES["veo_first_last_fast" if fast_first_last else "veo_first_last"]
+        return ROUTES["veo_first_last_fast" if fast_first_last else "veo_first_last"]
+
+    if has_start or frame_mode == "start":
+        if model_key == "veo":
+            return ROUTES["veo_image"]
+        if model_key == "sora":
+            return ROUTES["sora_image"]
+        if model_key == "kling_pro":
+            return ROUTES["kling_pro_image"]
+        if model_key == "kling_standard":
+            return ROUTES["kling_standard_image"]
+        # auto routing for image-to-video
+        return ROUTES["sora_image"]
+
+    if model_key == "veo":
+        return ROUTES["veo_text"]
+    if model_key == "sora":
+        return ROUTES["sora_text"]
+    if model_key == "kling_pro":
+        return ROUTES["kling_pro_text"]
+    if model_key == "kling_standard":
+        return ROUTES["kling_standard_text"]
+
+    # auto routing for text-to-video
+    return ROUTES["veo_text"]
+
+
+def is_remote_url(value: str) -> bool:
+    return value.startswith("http://") or value.startswith("https://")
+
+
+def resolve_image_source(path_or_url: str) -> str:
+    if not path_or_url:
+        return ""
+    if is_remote_url(path_or_url):
+        return path_or_url
+
+    local_path = pathlib.Path(path_or_url).expanduser().resolve()
+    if not local_path.exists():
+        raise FileNotFoundError(f"Image not found: {local_path}")
+
+    return fal_upload_file(str(local_path))
+
+
+def build_payload(
+    route: Route,
+    prompt: str,
+    aspect_ratio: str,
+    resolution: str,
+    duration: str,
+    start_image_url: str,
+    end_image_url: str,
+    *,
+    generate_audio: bool,
+    enhance_prompt: bool,
+    negative_prompt: str,
+    cfg_scale: float | None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "prompt": prompt,
+        "aspect_ratio": aspect_ratio,
+        "duration": duration,
+    }
+
+    if "veo3.1" in route.model_path:
+        payload["resolution"] = resolution
+        payload["generate_audio"] = generate_audio
+        payload["enhance_prompt"] = enhance_prompt
+    elif "kling-video" in route.model_path and cfg_scale is not None:
+        payload["cfg_scale"] = cfg_scale
+
+    if route.route_type == "image":
+        if "veo3.1/image-to-video" in route.model_path or "sora-2/image-to-video" in route.model_path:
+            if not start_image_url:
+                raise ValueError("Selected image-to-video route requires a start image")
+            payload["image_url"] = start_image_url
+        else:
+            if not start_image_url:
+                raise ValueError("Selected Kling image route requires a start image")
+            payload["start_image_url"] = start_image_url
+            if end_image_url:
+                payload["end_image_url"] = end_image_url
+
+        if negative_prompt and "kling-video" in route.model_path:
+            payload["negative_prompt"] = negative_prompt
+
+    if route.route_type == "first_last":
+        if not start_image_url or not end_image_url:
+            raise ValueError("First/last frame route requires both start and end images")
+        payload["first_frame_url"] = start_image_url
+        payload["last_frame_url"] = end_image_url
+
+    return payload
+
+
+def find_video_url(data: Any) -> str | None:
+    if isinstance(data, dict):
+        url = data.get("url")
+        if isinstance(url, str) and url:
+            lower = url.lower()
+            if ".mp4" in lower or "fal.media" in lower:
+                return url
+        for key in ("video", "videos", "data", "result", "output", "outputs"):
+            if key in data:
+                found = find_video_url(data[key])
+                if found:
+                    return found
+    elif isinstance(data, list):
+        for item in data:
+            found = find_video_url(item)
+            if found:
+                return found
     return None
 
 
-def resize_image(image_path: str, target_size: tuple[int, int]) -> str | None:
-    """缩放图片到目标尺寸，返回临时文件路径"""
-    try:
-        img = Image.open(image_path)
-        current_size = img.size  # (width, height)
+def main() -> None:
+    args = parse_args()
+    frame_mode = normalize_frame_mode(args.frame_mode)
+    model_key = resolve_model_key(args.model)
 
-        print(f"[Check] Image size: {current_size[0]}x{current_size[1]}, target: {target_size[0]}x{target_size[1]}")
+    start_image_input = args.start_image or args.input_image
+    end_image_input = args.end_image
+    has_start = bool(start_image_input)
+    has_end = bool(end_image_input)
 
-        if current_size == target_size:
-            print("[Check] Image size matches, no resize needed")
-            return None
+    route = resolve_route(
+        model_key,
+        has_start=has_start,
+        has_end=has_end,
+        frame_mode=frame_mode,
+        fast_first_last=args.fast_first_last,
+    )
 
-        print("[Resize] Resizing image to match target size...")
-        resized = img.resize(target_size, Image.Resampling.LANCZOS)
-
-        # 保存到临时文件
-        path = Path(image_path)
-        temp_path = path.parent / f"resized_{int(time.time())}{path.suffix}"
-        resized.save(temp_path, quality=95)
-        print(f"[Resize] Image resized to {target_size[0]}x{target_size[1]}: {temp_path}")
-        return str(temp_path)
-    except Exception as e:
-        print(f"[Warning] Failed to resize image: {e}")
-        return None
-
-
-def get_mime_type(file_path: str) -> str:
-    """根据文件扩展名获取 MIME 类型"""
-    ext = Path(file_path).suffix.lower()
-    mime_map = {
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".png": "image/png",
-        ".webp": "image/webp",
-    }
-    return mime_map.get(ext, "image/jpeg")
-
-
-def create_video_task(api_key: str, model: str, prompt: str, size: str, seconds: str, image_path: str | None = None) -> str:
-    """创建视频生成任务，返回 video_id"""
-    headers = {"Authorization": f"Bearer {api_key}"}
-
-    if image_path and model in IMAGE_SUPPORTED_MODELS:
-        # 使用 multipart/form-data 上传图片，需指定 MIME 类型
-        mime_type = get_mime_type(image_path)
-        filename = Path(image_path).name
-        with open(image_path, "rb") as f:
-            files = {"input_reference": (filename, f, mime_type)}
-            data = {"model": model, "prompt": prompt, "size": size, "seconds": seconds}
-            response = requests.post(f"{BASE_URL}/videos", headers=headers, data=data, files=files)
-    else:
-        # 纯 JSON 请求
-        headers["Content-Type"] = "application/json"
-        json_data = {"model": model, "prompt": prompt, "size": size, "seconds": seconds}
-        response = requests.post(f"{BASE_URL}/videos", headers=headers, json=json_data)
-
-    if response.status_code not in (200, 201):
-        raise Exception(f"Failed to create task: {response.text}")
-
-    return response.json()["id"]
-
-
-def wait_for_completion(api_key: str, video_id: str, max_wait: int = 1200, poll_interval: int = 10) -> None:
-    """轮询等待视频生成完成"""
-    headers = {"Authorization": f"Bearer {api_key}"}
-    start_time = time.time()
-    last_status = ""
-
-    while time.time() - start_time < max_wait:
-        response = requests.get(f"{BASE_URL}/videos/{video_id}", headers=headers)
-
-        if response.status_code != 200:
-            print(f"[Warning] Failed to get status: {response.text}")
-            time.sleep(poll_interval)
-            continue
-
-        data = response.json()
-        status = data.get("status", "").lower()
-        elapsed = int(time.time() - start_time)
-
-        if status != last_status:
-            print(f"[Status] {status} ({elapsed}s elapsed)")
-            last_status = status
-
-        if status in ("completed", "done", "success"):
-            return
-
-        if status in ("failed", "error"):
-            error = data.get("error", {})
-            error_msg = error if isinstance(error, str) else str(error)
-            raise Exception(f"Video generation failed: {error_msg}")
-
-        time.sleep(poll_interval)
-
-    raise Exception("Video generation timed out (20 minutes)")
-
-
-def download_video(api_key: str, video_id: str, output_path: str) -> None:
-    """下载生成的视频"""
-    headers = {"Authorization": f"Bearer {api_key}"}
-    response = requests.get(f"{BASE_URL}/videos/{video_id}/content", headers=headers, stream=True, allow_redirects=True)
-
-    if response.status_code != 200:
-        raise Exception(f"Download failed with status {response.status_code}")
-
-    with open(output_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            f.write(chunk)
-
-
-def main():
-    parser = argparse.ArgumentParser(description="AI Video Generator")
-    parser.add_argument("model", nargs="?", default="veo-3.1", help="Model: veo-3.1 / sora-2-pro")
-    parser.add_argument("prompt", nargs="?", default="A cat sitting on a windowsill", help="Video description")
-    parser.add_argument("size", nargs="?", default="720P", help="Resolution: 720P/1080P or 1280x720/720x1280")
-    parser.add_argument("seconds", nargs="?", default="8", help="Duration in seconds")
-    parser.add_argument("output_dir", nargs="?", default=".", help="Output directory")
-    parser.add_argument("input_image", nargs="?", default="", help="Input image path (optional, Sora only)")
-    args = parser.parse_args()
-
-    # 获取 API Key
-    api_key = os.environ.get("MAX_API_KEY")
-    if not api_key:
-        print("Error: Missing MAX_API_KEY environment variable")
-        sys.exit(1)
-
-    # 解析模型
-    model_id = MODEL_MAP.get(args.model, args.model)
+    aspect_ratio, resolution = parse_size_to_aspect_and_resolution(args.size)
+    duration = parse_duration(args.seconds, route.model_path)
 
     print("[VideoGen] Starting video generation...")
-    print(f"[Config] Model: {model_id}")
+    print(f"[Config] Route: {route.model_path}")
     print(f"[Config] Prompt: {args.prompt}")
-    print(f"[Config] Size: {args.size}")
-    print(f"[Config] Duration: {args.seconds}s")
-    if args.input_image:
-        print(f"[Config] Input image: {args.input_image}")
-    print()
+    print(f"[Config] Aspect ratio: {aspect_ratio}")
+    print(f"[Config] Resolution: {resolution}")
+    print(f"[Config] Duration: {duration}")
+    if start_image_input:
+        print(f"[Config] Start image: {start_image_input}")
+    if end_image_input:
+        print(f"[Config] End image: {end_image_input}")
 
-    temp_image = None
-    image_to_upload = None
+    if not os.environ.get("MAX_API_KEY"):
+        raise FalClientError("Missing MAX_API_KEY environment variable")
 
-    try:
-        # 处理输入图片
-        if args.input_image and model_id in IMAGE_SUPPORTED_MODELS:
-            if not Path(args.input_image).exists():
-                print(f"Error: Input image not found: {args.input_image}")
-                sys.exit(1)
+    start_image_url = resolve_image_source(start_image_input) if start_image_input else ""
+    end_image_url = resolve_image_source(end_image_input) if end_image_input else ""
 
-            # 检查是否需要缩放
-            target_size = parse_size(args.size)
-            if target_size:
-                temp_image = resize_image(args.input_image, target_size)
-                image_to_upload = temp_image if temp_image else args.input_image
-            else:
-                image_to_upload = args.input_image
-        elif args.input_image and model_id not in IMAGE_SUPPORTED_MODELS:
-            print(f"[Warning] Model {model_id} does not support image input, ignoring input image")
+    payload = build_payload(
+        route,
+        prompt=args.prompt,
+        aspect_ratio=aspect_ratio,
+        resolution=resolution,
+        duration=duration,
+        start_image_url=start_image_url,
+        end_image_url=end_image_url,
+        generate_audio=as_bool(args.generate_audio),
+        enhance_prompt=as_bool(args.enhance_prompt),
+        negative_prompt=args.negative_prompt,
+        cfg_scale=args.cfg_scale,
+    )
 
-        # Step 1: 创建任务
-        print("[Step 1] Creating video generation task...")
-        video_id = create_video_task(api_key, model_id, args.prompt, args.size, args.seconds, image_to_upload)
-        print(f"[Step 1] Task created: {video_id}")
-        print()
+    created = fal_queue_submit(route.model_path, payload)
+    request_id = created.get("request_id")
+    if not request_id:
+        raise FalClientError(f"Queue submit missing request_id: {created}")
+    print(f"[Queue] Request submitted: {request_id}")
 
-        # Step 2: 等待完成
-        print("[Step 2] Waiting for video generation...")
-        start_time = time.time()
-        wait_for_completion(api_key, video_id)
-        print("[Step 2] Video generation completed!")
-        print()
+    print("[Queue] Waiting for completion...")
+    fal_queue_wait(
+        route.model_path,
+        request_id,
+        poll_interval_seconds=max(1, args.poll_interval),
+        max_wait_seconds=args.max_wait,
+        on_status=lambda status, _payload, elapsed: print(f"[Queue] {status} ({elapsed}s)"),
+    )
+    result = fal_queue_result(route.model_path, request_id)
+    video_url = find_video_url(result)
+    if not video_url:
+        raise FalClientError(f"No video URL found in queue result: {result}")
 
-        # Step 3: 下载视频
-        print("[Step 3] Downloading video...")
-        timestamp = int(time.time() * 1000)
-        filename = f"generated_video_{timestamp}.mp4"
-        output_dir = Path(args.output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)  # 确保目录存在
-        filepath = output_dir / filename
-        download_video(api_key, video_id, str(filepath))
+    timestamp = int(time.time() * 1000)
+    output_dir = pathlib.Path(args.output_dir).expanduser().resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"generated_video_{timestamp}.mp4"
+    download_to_file(video_url, str(output_path))
 
-        file_size_mb = filepath.stat().st_size / (1024 * 1024)
-        total_time = int(time.time() - start_time)
-
-        print(f"[Step 3] Video downloaded: {filepath}")
-        print()
-        print("=" * 50)
-        print(f"Video saved: {filepath}")
-        print(f"File size: {file_size_mb:.2f} MB")
-        print(f"Total time: {total_time}s")
-        print("=" * 50)
-
-    finally:
-        # 清理临时文件
-        if temp_image and Path(temp_image).exists():
-            Path(temp_image).unlink()
-            print(f"[Cleanup] Removed temp file: {temp_image}")
+    size_mb = output_path.stat().st_size / (1024 * 1024)
+    print(f"[Done] Video saved: {output_path}")
+    print(f"[Done] Size: {size_mb:.2f} MB")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as error:  # pylint: disable=broad-except
+        print(f"Error: {error}")
+        sys.exit(1)
