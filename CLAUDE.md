@@ -1,6 +1,6 @@
 # Maxgent Plugin
 
-> Version: 0.16.0
+> Version: 0.18.1
 
 面向非技术用户的 Claude Code 插件，提供常用操作的自动化技能。
 
