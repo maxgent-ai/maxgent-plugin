@@ -1,164 +1,291 @@
 #!/usr/bin/env bun
 
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
+import {
+  downloadToFile,
+  falQueueResult,
+  falQueueSubmit,
+  falQueueWait,
+  falRun,
+  falUploadFile,
+  isRemoteUrl,
+  parseOptions,
+} from "../_shared/fal-client.js";
 
-// 配置
-const API_KEY = process.env.MAX_API_KEY;
-const MODEL = process.argv[2] || 'gemini-pro';
-const PROMPT = process.argv[3] || 'A beautiful sunset over mountains';
-const ASPECT_RATIO = process.argv[4] || '1:1';
-const NUM_IMAGES = parseInt(process.argv[5]) || 1;
-const OUTPUT_DIR = process.argv[6] || '.';
-const INPUT_IMAGE = process.argv[7] || '';  // 可选：输入图片路径，用于图片编辑
+const MODEL_ARG = process.argv[2] || "auto";
+const PROMPT = process.argv[3] || "A beautiful sunset over mountains";
+const ASPECT_RATIO = process.argv[4] || "1:1";
+const NUM_IMAGES = Math.max(1, parseInt(process.argv[5] || "1", 10));
+const OUTPUT_DIR = process.argv[6] || ".";
+const INPUT_IMAGE = process.argv[7] || "";
 
-// 模型映射
-const MODEL_MAP = {
-  'gemini-pro': 'google/gemini-2.5-flash-image',
-  'seedream': 'bytedance-seed/seedream-4.5'
+const cliOptions = parseOptions(process.argv.slice(8));
+const OUTPUT_FORMAT = String(cliOptions["output-format"] || process.env.IMAGE_OUTPUT_FORMAT || "png").toLowerCase();
+const SEED = cliOptions.seed ? Number(cliOptions.seed) : undefined;
+const GUIDANCE_SCALE = cliOptions["guidance-scale"] ? Number(cliOptions["guidance-scale"]) : undefined;
+const NUM_INFERENCE_STEPS = cliOptions.steps ? Number(cliOptions.steps) : undefined;
+
+if (!process.env.MAX_API_KEY) {
+  console.error("Error: Missing MAX_API_KEY environment variable");
+  process.exit(1);
+}
+
+const MODEL_ALIASES = {
+  "gemini-pro": "auto",
+  seedream: "auto",
+  "gpt-image-1.5": "fal-ai/gpt-image-1.5",
+  "gpt-image": "fal-ai/gpt-image-1.5",
+  "nano-banana": "fal-ai/nano-banana-pro",
+  "nano-banana-pro": "fal-ai/nano-banana-pro",
+  "nano-banana-edit": "fal-ai/nano-banana-pro/edit",
+  "nano-banana-pro/edit": "fal-ai/nano-banana-pro/edit",
+  "flux-dev": "fal-ai/flux/dev",
+  flux: "fal-ai/flux/dev",
+  "flux/dev": "fal-ai/flux/dev",
+  auto: "auto",
+  default: "auto",
 };
 
-const modelId = MODEL_MAP[MODEL] || MODEL;
+const DEFAULT_ROUTE = {
+  text: { modelPath: "fal-ai/nano-banana-pro", mode: "queue" },
+  edit: { modelPath: "fal-ai/nano-banana-pro/edit", mode: "queue" },
+};
 
-// 检查 API Key
-if (!API_KEY) {
-  console.error('❌ 缺少 MAX_API_KEY 环境变量');
-  process.exit(1);
-}
+function resolveRoute(modelArg, hasInputImage) {
+  const normalized = String(modelArg || "auto").toLowerCase();
+  const alias = MODEL_ALIASES[normalized] || modelArg;
 
-console.log(`🎨 开始生成图片...`);
-console.log(`📝 提示词: ${PROMPT}`);
-console.log(`🤖 模型: ${modelId}`);
-console.log(`📐 比例: ${ASPECT_RATIO}`);
-console.log(`🔢 数量: ${NUM_IMAGES}`);
-if (INPUT_IMAGE) {
-  console.log(`🖼️  输入图片: ${INPUT_IMAGE}`);
-}
-
-// 构建消息内容
-let messageContent;
-
-if (INPUT_IMAGE) {
-  // 图片编辑模式：读取输入图片并转为 base64
-  if (!fs.existsSync(INPUT_IMAGE)) {
-    console.error(`❌ 输入图片不存在: ${INPUT_IMAGE}`);
-    process.exit(1);
+  if (alias === "auto") {
+    return DEFAULT_ROUTE[hasInputImage ? "edit" : "text"];
   }
 
-  const imageBuffer = fs.readFileSync(INPUT_IMAGE);
-  const base64Image = imageBuffer.toString('base64');
-  const ext = path.extname(INPUT_IMAGE).toLowerCase().slice(1);
-  const mimeType = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
-
-  messageContent = [
-    {
-      type: 'text',
-      text: `Edit this image: ${PROMPT}`
-    },
-    {
-      type: 'image_url',
-      image_url: {
-        url: `data:${mimeType};base64,${base64Image}`
-      }
+  if (alias === "fal-ai/gpt-image-1.5") {
+    return { modelPath: alias, mode: "queue" };
+  }
+  if (alias === "fal-ai/nano-banana-pro" || alias === "fal-ai/nano-banana-pro/edit") {
+    return { modelPath: alias, mode: "queue" };
+  }
+  if (alias === "fal-ai/flux/dev") {
+    if (hasInputImage) {
+      return DEFAULT_ROUTE.edit;
     }
-  ];
-} else {
-  // 纯文本生成模式
-  messageContent = `Generate an image: ${PROMPT}`;
+    return { modelPath: alias, mode: "run" };
+  }
+
+  const modelPath = String(alias);
+  return { modelPath, mode: modelPath.includes("flux/dev") ? "run" : "queue" };
 }
 
-// 使用 fetch 调用 API
-try {
-  const response = await fetch('https://api.maxgent.ai/api/openrouter/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`
-    },
-    body: JSON.stringify({
-      model: modelId,
-      messages: [
-        {
-          role: 'user',
-          content: messageContent
-        }
-      ],
-      modalities: ['image', 'text'],
-      image_config: {
-        aspect_ratio: ASPECT_RATIO
-      },
-      max_tokens: 4096
-    })
-  });
+function mapAspectToImageSize(aspectRatio) {
+  const map = {
+    "1:1": "1024x1024",
+    "4:3": "1536x1024",
+    "3:4": "1024x1536",
+    "16:9": "1536x1024",
+    "9:16": "1024x1536",
+  };
+  return map[aspectRatio] || "1024x1024";
+}
 
-  const data = await response.json();
+function mapAspectToFluxSize(aspectRatio) {
+  const map = {
+    "1:1": "square_hd",
+    "4:3": "landscape_4_3",
+    "3:4": "portrait_4_3",
+    "16:9": "landscape_16_9",
+    "9:16": "portrait_16_9",
+  };
+  return map[aspectRatio] || "square_hd";
+}
 
-  if (data.error) {
-    console.error(`❌ API 错误: ${data.error.message || JSON.stringify(data.error)}`);
-    process.exit(1);
+function normalizeAspectRatio(aspectRatio) {
+  const supported = new Set(["1:1", "4:3", "3:4", "16:9", "9:16"]);
+  return supported.has(aspectRatio) ? aspectRatio : "1:1";
+}
+
+async function normalizeInputImage(imagePathOrUrl) {
+  if (!imagePathOrUrl) return "";
+  if (isRemoteUrl(imagePathOrUrl)) return imagePathOrUrl;
+  if (!fs.existsSync(imagePathOrUrl)) {
+    throw new Error(`Input image not found: ${imagePathOrUrl}`);
   }
+  return falUploadFile(imagePathOrUrl);
+}
 
-  // 检查响应格式
-  if (!data.choices || data.choices.length === 0) {
-    console.error('❌ 未能生成图片');
-    console.error('响应:', JSON.stringify(data, null, 2));
-    process.exit(1);
-  }
+function buildPayload(route, inputImageUrl) {
+  const modelPath = route.modelPath;
+  const payload = {
+    prompt: PROMPT,
+    num_images: NUM_IMAGES,
+    output_format: OUTPUT_FORMAT,
+  };
 
-  const message = data.choices[0].message;
-  const timestamp = Date.now();
-  let imageCount = 0;
-
-  // 处理 images 数组（OpenRouter Gemini 格式）
-  if (Array.isArray(message.images)) {
-    message.images.forEach((item, index) => {
-      if (item.type === 'image_url' && item.image_url?.url) {
-        const base64Match = item.image_url.url.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (base64Match) {
-          const ext = base64Match[1] === 'jpeg' ? 'jpg' : base64Match[1];
-          const base64Data = base64Match[2];
-          const filename = NUM_IMAGES === 1
-            ? `generated_image_${timestamp}.${ext}`
-            : `generated_image_${timestamp}_${index + 1}.${ext}`;
-          const filepath = path.join(OUTPUT_DIR, filename);
-
-          const imageBuffer = Buffer.from(base64Data, 'base64');
-          fs.writeFileSync(filepath, imageBuffer);
-          console.log(`✅ 图片已保存: ${filepath}`);
-          imageCount++;
-        }
-      }
-    });
-  }
-
-  // 处理 content 数组（其他模型格式）
-  if (imageCount === 0 && Array.isArray(message.content)) {
-    message.content.forEach((item, index) => {
-      if (item.type === 'image_url' && item.image_url?.url) {
-        const base64Match = item.image_url.url.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (base64Match) {
-          const ext = base64Match[1] === 'jpeg' ? 'jpg' : base64Match[1];
-          const base64Data = base64Match[2];
-          const filename = `generated_image_${timestamp}_${index + 1}.${ext}`;
-          const filepath = path.join(OUTPUT_DIR, filename);
-
-          const imageBuffer = Buffer.from(base64Data, 'base64');
-          fs.writeFileSync(filepath, imageBuffer);
-          console.log(`✅ 图片已保存: ${filepath}`);
-          imageCount++;
-        }
-      }
-    });
-  }
-
-  if (imageCount === 0) {
-    console.log('ℹ️  未找到图片，响应内容:');
-    console.log(message.content || '(空)');
+  if (modelPath.includes("gpt-image-1.5")) {
+    payload.image_size = mapAspectToImageSize(ASPECT_RATIO);
+    if (inputImageUrl) {
+      payload.image_urls = [inputImageUrl];
+      payload.input_fidelity = "high";
+    }
+  } else if (modelPath.includes("nano-banana")) {
+    payload.aspect_ratio = normalizeAspectRatio(ASPECT_RATIO);
+    payload.resolution = "1K";
+    if (inputImageUrl) {
+      payload.image_urls = [inputImageUrl];
+    }
+  } else if (modelPath.includes("flux/dev")) {
+    payload.image_size = mapAspectToFluxSize(ASPECT_RATIO);
   } else {
-    console.log(`\n🎉 完成！共生成 ${imageCount} 张图片`);
+    payload.aspect_ratio = normalizeAspectRatio(ASPECT_RATIO);
+    if (inputImageUrl) payload.image_url = inputImageUrl;
   }
 
-} catch (e) {
-  console.error(`❌ 请求失败: ${e.message}`);
-  process.exit(1);
+  if (Number.isFinite(SEED)) payload.seed = SEED;
+  if (Number.isFinite(GUIDANCE_SCALE)) payload.guidance_scale = GUIDANCE_SCALE;
+  if (Number.isFinite(NUM_INFERENCE_STEPS)) payload.num_inference_steps = NUM_INFERENCE_STEPS;
+
+  return payload;
 }
+
+function extractImageEntries(payload) {
+  const candidates = [];
+
+  const addEntry = (item) => {
+    if (!item) return;
+    if (typeof item === "string") {
+      candidates.push({ url: item });
+      return;
+    }
+    if (item.url) {
+      candidates.push(item);
+      return;
+    }
+    if (item.image_url?.url) {
+      candidates.push({ url: item.image_url.url, ...item });
+    }
+  };
+
+  if (Array.isArray(payload?.images)) payload.images.forEach(addEntry);
+  if (Array.isArray(payload?.data?.images)) payload.data.images.forEach(addEntry);
+  if (payload?.image) addEntry(payload.image);
+  if (payload?.data?.image) addEntry(payload.data.image);
+
+  return candidates;
+}
+
+function detectExtension(imageEntry, fallback = "png") {
+  const contentType = imageEntry.content_type || imageEntry.mime_type || "";
+  if (contentType.includes("jpeg")) return "jpg";
+  if (contentType.includes("png")) return "png";
+  if (contentType.includes("webp")) return "webp";
+
+  const url = imageEntry.url || "";
+  const dataUrlMatch = url.match(/^data:image\/(\w+);base64,/i);
+  if (dataUrlMatch) {
+    const ext = dataUrlMatch[1].toLowerCase();
+    return ext === "jpeg" ? "jpg" : ext;
+  }
+
+  try {
+    const pathname = new URL(url).pathname.toLowerCase();
+    const ext = path.extname(pathname).replace(".", "");
+    if (ext) return ext;
+  } catch {
+    // Ignore URL parse error.
+  }
+  return fallback;
+}
+
+function saveDataUrlToFile(dataUrl, outputPath) {
+  const match = dataUrl.match(/^data:image\/\w+;base64,(.+)$/i);
+  if (!match) {
+    throw new Error("Unsupported data URL image format");
+  }
+  const buffer = Buffer.from(match[1], "base64");
+  fs.writeFileSync(outputPath, buffer);
+}
+
+async function saveImages(imageEntries) {
+  const timestamp = Date.now();
+  const savedPaths = [];
+  const outputDir = path.resolve(OUTPUT_DIR);
+  fs.mkdirSync(outputDir, { recursive: true });
+
+  for (let i = 0; i < imageEntries.length; i++) {
+    const entry = imageEntries[i];
+    const ext = detectExtension(entry, OUTPUT_FORMAT === "jpeg" ? "jpg" : OUTPUT_FORMAT);
+    const filename = imageEntries.length === 1
+      ? `generated_image_${timestamp}.${ext}`
+      : `generated_image_${timestamp}_${i + 1}.${ext}`;
+    const filePath = path.join(outputDir, filename);
+    const url = entry.url;
+
+    if (typeof url === "string" && url.startsWith("data:image/")) {
+      saveDataUrlToFile(url, filePath);
+    } else if (typeof url === "string" && url) {
+      await downloadToFile(url, filePath);
+    } else {
+      continue;
+    }
+    savedPaths.push(filePath);
+  }
+
+  return savedPaths;
+}
+
+async function invokeModel(route, payload) {
+  if (route.mode === "run") {
+    return falRun(route.modelPath, payload);
+  }
+
+  const queued = await falQueueSubmit(route.modelPath, payload);
+  const requestId = queued.request_id;
+  if (!requestId) {
+    throw new Error(`Queue response missing request_id: ${JSON.stringify(queued)}`);
+  }
+
+  await falQueueWait(route.modelPath, requestId, {
+    onStatus: (status) => {
+      console.log(`[Queue] ${status}`);
+    },
+  });
+  return falQueueResult(route.modelPath, requestId);
+}
+
+async function main() {
+  const inputImageUrl = await normalizeInputImage(INPUT_IMAGE);
+  const route = resolveRoute(MODEL_ARG, Boolean(inputImageUrl));
+  const payload = buildPayload(route, inputImageUrl);
+
+  console.log("Starting image generation...");
+  console.log(`Prompt: ${PROMPT}`);
+  console.log(`Model route: ${route.modelPath} (${route.mode})`);
+  console.log(`Aspect ratio: ${ASPECT_RATIO}`);
+  console.log(`Images: ${NUM_IMAGES}`);
+  if (INPUT_IMAGE) console.log(`Input image: ${INPUT_IMAGE}`);
+
+  const result = await invokeModel(route, payload);
+  const imageEntries = extractImageEntries(result);
+
+  if (imageEntries.length === 0) {
+    console.error("No images found in model response");
+    console.error(JSON.stringify(result, null, 2));
+    process.exit(1);
+  }
+
+  const files = await saveImages(imageEntries);
+  if (files.length === 0) {
+    console.error("No images could be saved from response");
+    process.exit(1);
+  }
+
+  for (const file of files) {
+    console.log(`Saved: ${file}`);
+  }
+  console.log(`Done. Generated ${files.length} image(s).`);
+}
+
+main().catch((error) => {
+  console.error(`Image generation failed: ${error.message}`);
+  process.exit(1);
+});

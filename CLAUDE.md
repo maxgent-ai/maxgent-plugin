@@ -14,6 +14,9 @@ maxgent-plugin/
 ├── .claude-plugin/
 │   └── plugin.json       # Plugin manifest (required)
 ├── skills/
+│   ├── _shared/          # skills 共享 FAL API 客户端
+│   │   ├── fal-client.js
+│   │   └── fal_client.py
 │   ├── audio-extract/    # 视频音频提取
 │   │   └── SKILL.md
 │   ├── audio-transcribe/ # 语音转文字

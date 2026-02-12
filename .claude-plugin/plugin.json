@@ -1,7 +1,7 @@
 {
   "name": "maxgent",
   "description": "A Claude Code plugin for vibe-driven operations and developer workflow automation",
-  "version": "0.17.2",
+  "version": "0.17.3",
   "author": {
     "name": "Maxgent AI"
   },
