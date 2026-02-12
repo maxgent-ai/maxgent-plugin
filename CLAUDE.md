@@ -17,14 +17,14 @@ maxgent-plugin/
 │   ├── _shared/          # skills 共享 FAL API 客户端
 │   │   ├── fal-client.js
 │   │   └── fal_client.py
-│   ├── audio-extract/    # 视频音频提取
-│   │   └── SKILL.md
 │   ├── audio-transcribe/ # 语音转文字
 │   │   ├── SKILL.md
 │   │   └── transcribe.py
 │   ├── browser/          # 浏览器自动化
 │   │   ├── SKILL.md
 │   │   └── client.py
+│   ├── media-processing/ # 音视频处理（ffmpeg）
+│   │   └── SKILL.md
 │   ├── image-gen/        # AI 图片生成
 │   │   └── SKILL.md
 │   ├── video-gen/        # AI 视频生成
@@ -33,12 +33,10 @@ maxgent-plugin/
 │   ├── media-understand/ # AI 多媒体理解
 │   │   ├── SKILL.md
 │   │   └── media-understand.js
-│   ├── skill-extractor/  # 经验提取生成 Skill
-│   │   └── SKILL.md
-│   ├── video-concat/     # 视频合并
-│   │   └── SKILL.md
-│   ├── video-trim/       # 视频裁剪
-│   │   └── SKILL.md
+│   ├── skill-creator/    # 创建项目级 Skill
+│   │   ├── SKILL.md
+│   │   ├── scripts/
+│   │   └── references/
 │   └── youtube-download/ # YouTube 下载
 │       └── SKILL.md
 ├── CLAUDE.md             # This file
@@ -49,15 +47,13 @@ maxgent-plugin/
 
 | Skill | 功能 | 触发词 |
 |-------|------|--------|
-| audio-extract | 从视频提取音频 | 提取音频、抽取音频、extract audio |
 | audio-transcribe | 语音转文字（Whisper） | 语音转文字、音频转文字、transcribe |
 | browser | 浏览器自动化（Playwright + CDP） | 打开网页、截图、click、fill、automate |
+| media-processing | 音视频处理（裁剪、合并、提取音频、转码等） | 裁剪视频、合并视频、提取音频、压缩视频、trim、merge、extract audio |
 | image-gen | AI 图片生成（OpenRouter API） | 生成图片、画图、generate image |
 | video-gen | AI 视频生成（Veo/Sora） | 生成视频、文生视频、图生视频、generate video |
 | media-understand | AI 多媒体理解（Gemini 2.5 Flash） | 理解图片、分析视频、transcribe audio |
-| skill-extractor | 从会话提取经验生成 Skill | 提取skill、固化经验、extract skill |
-| video-concat | 合并多个视频文件 | 合并视频、拼接视频、merge videos |
-| video-trim | 裁剪视频片段 | 剪辑视频、裁剪视频、trim video |
+| skill-creator | 创建项目级 Skill（保存到 .claude/skills/） | 创建skill、提取经验、create skill |
 | youtube-download | YouTube/B站视频下载（yt-dlp） | 下载视频、download youtube、下载B站 |
 
 ## Commands
