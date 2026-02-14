@@ -32,7 +32,7 @@ Parameters:
 2. `PROMPT`: image description or editing instruction
 3. `ASPECT_RATIO`: `1:1`, `4:3`, `3:4`, `16:9`, `9:16`
 4. `NUM_IMAGES`: number of images to generate
-5. `OUTPUT_DIR`: output directory
+5. `OUTPUT_DIR`: output directory — **default to `$MAX_PROJECT_PATH`** (the user's project root)
 6. `INPUT_IMAGE`: optional, for image editing mode
 7. `--output-format`: `png|jpg|webp`
 
@@ -40,18 +40,18 @@ Parameters:
 
 ```bash
 # Default routing, text-to-image
-bun skills/image-gen/image-gen.js auto "a cat under the starry sky" "1:1" 1 "."
+bun skills/image-gen/image-gen.js auto "a cat under the starry sky" "1:1" 1 "$MAX_PROJECT_PATH"
 
 # Specify model (optional)
-bun skills/image-gen/image-gen.js gpt-image-1.5 "modern building facade, cinematic" "16:9" 2 "."
+bun skills/image-gen/image-gen.js gpt-image-1.5 "modern building facade, cinematic" "16:9" 2 "$MAX_PROJECT_PATH"
 
 # Image editing
-bun skills/image-gen/image-gen.js auto "change background to a beach at sunset" "1:1" 1 "." "/path/to/input.jpg"
+bun skills/image-gen/image-gen.js auto "change background to a beach at sunset" "1:1" 1 "$MAX_PROJECT_PATH" "/path/to/input.jpg"
 ```
 
 ## Instructions
 
 1. Check that `MAX_API_KEY` exists.
-2. Use AskUserQuestion to collect: edit or generate, prompt, aspect ratio, count, output path.
+2. Use AskUserQuestion to collect: edit or generate, prompt, aspect ratio, count. Default output path to `$MAX_PROJECT_PATH`.
 3. Run the script and wait for result.
 4. Report the output path; on failure, return a clear error and suggest retry options (switch model / simplify prompt).
