@@ -10,7 +10,13 @@ import {
 } from "../_shared/fal-client.js";
 
 const opts = parseOptions(process.argv.slice(2));
-const MEDIA_PATH = opts.media || "";
+
+if (!opts.media) {
+  console.error("Error: --media is required\nUsage: bun media-understand.js --media <path_or_url> --prompt \"...\" [--language chinese|english]");
+  process.exit(1);
+}
+
+const MEDIA_PATH = opts.media;
 const PROMPT = opts.prompt || "Please describe this content";
 const LANGUAGE = opts.language || "chinese";
 const DEFAULT_MM_MODEL = String(

@@ -14,8 +14,18 @@ import {
 } from "../_shared/fal-client.js";
 
 const opts = parseOptions(process.argv.slice(2));
+
+if (!opts.prompt) {
+  console.error("Error: --prompt is required\nUsage: bun image-gen.js --prompt \"...\" [--model auto] [--output-dir DIR] ...");
+  process.exit(1);
+}
+if (!process.env.MAX_API_KEY) {
+  console.error("Error: Missing MAX_API_KEY environment variable");
+  process.exit(1);
+}
+
 const MODEL_ARG = opts.model || "auto";
-const PROMPT = opts.prompt || "A beautiful sunset over mountains";
+const PROMPT = opts.prompt;
 const ASPECT_RATIO = opts["aspect-ratio"] || "1:1";
 const NUM_IMAGES = Math.max(1, parseInt(opts["num-images"] || "1", 10));
 const OUTPUT_DIR = opts["output-dir"] || ".";
@@ -24,11 +34,6 @@ const OUTPUT_FORMAT = String(opts["output-format"] || process.env.IMAGE_OUTPUT_F
 const SEED = opts.seed ? Number(opts.seed) : undefined;
 const GUIDANCE_SCALE = opts["guidance-scale"] ? Number(opts["guidance-scale"]) : undefined;
 const NUM_INFERENCE_STEPS = opts.steps ? Number(opts.steps) : undefined;
-
-if (!process.env.MAX_API_KEY) {
-  console.error("Error: Missing MAX_API_KEY environment variable");
-  process.exit(1);
-}
 
 const MODEL_ALIASES = {
   "gemini-pro": "auto",
