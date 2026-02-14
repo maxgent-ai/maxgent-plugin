@@ -1,11 +1,11 @@
 ---
 name: media-understand
-description: 使用 AI 理解图片/视频/音频，默认走多模态路由（default）。Use when user wants to analyze image/video/audio, OCR, summarize media, transcribe audio.
+description: AI-powered media understanding and analysis for images, videos, and audio. Use when users ask to describe, analyze, summarize, or extract text (OCR) from media files.
 ---
 
 # Media Understanding
 
-通过 Maxgent FAL API proxy 分析多媒体内容，默认使用 `default` 路由。
+Analyze multimedia content via Maxgent FAL API proxy, using the `default` route.
 
 ## Supported Formats
 
@@ -17,14 +17,14 @@ description: 使用 AI 理解图片/视频/音频，默认走多模态路由（d
 
 ## Prerequisites
 
-1. `MAX_API_KEY` 环境变量（Max 自动注入）
-2. Bun 1.0+（Max 内置）
+1. `MAX_API_KEY` environment variable (auto-injected by Max)
+2. Bun 1.0+ (built into Max)
 
 ## Routing
 
-1. `default`（默认）
-   - 端点：`openrouter/router/openai/v1/chat/completions`
-   - 模型：`DEFAULT_MM_MODEL`，默认值为 `google/gemini-2.5-pro`（可通过 `--model` 覆盖）
+1. `default`
+   - Endpoint: `openrouter/router/openai/v1/chat/completions`
+   - Model: `DEFAULT_MM_MODEL`, defaults to `google/gemini-2.5-pro` (override with `--model`)
 
 ## Usage
 
@@ -33,30 +33,30 @@ bun skills/media-understand/media-understand.js <media_path_or_url> [prompt] [la
   [--model MODEL_ID] [--max-tokens N] [--temperature X]
 ```
 
-参数说明：
+Parameters:
 
-1. `media_path_or_url`：本地文件路径或 YouTube URL
-2. `prompt`：分析问题
-3. `language`：`chinese` / `english`
-4. `--model`：默认模型可覆盖
+1. `media_path_or_url`: local file path or YouTube URL
+2. `prompt`: analysis question
+3. `language`: `chinese` / `english`
+4. `--model`: override the default model
 
 ## Examples
 
 ```bash
-# 图片 OCR（默认路由）
-bun skills/media-understand/media-understand.js ./screenshot.png "识别图片中的所有文字" chinese
+# Image OCR (default route)
+bun skills/media-understand/media-understand.js ./screenshot.png "extract all text from this image" english
 
-# 视频总结（YouTube）
-bun skills/media-understand/media-understand.js "https://youtube.com/watch?v=xxx" "总结这个视频" chinese
+# Video summary (YouTube)
+bun skills/media-understand/media-understand.js "https://youtube.com/watch?v=xxx" "summarize this video" english
 
-# 本地音频分析
-bun skills/media-understand/media-understand.js ./meeting.m4a "总结会议要点并列出行动项" chinese
+# Local audio analysis
+bun skills/media-understand/media-understand.js ./meeting.m4a "summarize key points and list action items" english
 ```
 
 ## Instructions
 
-1. 检查 `MAX_API_KEY`。
-2. 识别媒体类型并校验大小限制。
-3. 使用默认路由进行分析，可通过 `--model` 覆盖默认模型。
-4. 本地图片/视频/音频会自动上传到 FAL 上传代理后再分析。
-5. 输出时优先返回可读文本；如失败，明确指出是上传/代理/模型参数问题。
+1. Check `MAX_API_KEY`.
+2. Identify media type and validate size limits.
+3. Analyze using the default route; override the model with `--model` if needed.
+4. Local images/videos/audio are auto-uploaded via FAL upload proxy before analysis.
+5. Return readable text on success; on failure, clearly indicate whether it's an upload / proxy / model parameter issue.

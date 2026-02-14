@@ -73,7 +73,7 @@ function assertInputValid(mediaPath, mediaType) {
 
 function systemPrompt(language) {
   if (language === "chinese") {
-    return "你是一个专业的多媒体分析助手。请用中文回答，内容准确、结构清晰。";
+    return "You are a professional multimedia analysis assistant. Answer accurately with clear structure, in Chinese.";
   }
   return "You are a professional multimedia analysis assistant. Answer clearly and accurately in English.";
 }

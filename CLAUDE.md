@@ -1,8 +1,8 @@
 # Maxgent Plugin
 
-> Version: 0.18.1
+> Version: 0.18.2
 
-面向非技术用户的 Claude Code 插件，提供常用操作的自动化技能。
+A Claude Code plugin for non-technical users, providing automation skills for common operations.
 
 ## Project Structure
 
@@ -10,69 +10,77 @@
 maxgent-plugin/
 ├── .claude/
 │   └── commands/
-│       └── release.md    # 发布新版本命令
+│       └── release.md        # Release new version command
 ├── .claude-plugin/
-│   └── plugin.json       # Plugin manifest (required)
+│   └── plugin.json           # Plugin manifest (required)
 ├── skills/
-│   ├── _shared/          # skills 共享 FAL API 客户端
+│   ├── _shared/              # Shared FAL API client for skills
 │   │   ├── fal-client.js
 │   │   └── fal_client.py
-│   ├── audio-transcribe/ # 语音转文字
+│   ├── audio-transcribe/     # Speech to text
 │   │   ├── SKILL.md
 │   │   └── transcribe.py
-│   ├── browser/          # 浏览器自动化
+│   ├── browser/              # Browser automation
 │   │   ├── SKILL.md
 │   │   └── client.py
-│   ├── media-processing/ # 音视频处理（ffmpeg）
-│   │   └── SKILL.md
-│   ├── image-gen/        # AI 图片生成
-│   │   └── SKILL.md
-│   ├── video-gen/        # AI 视频生成
+│   ├── image-gen/            # AI image generation
 │   │   ├── SKILL.md
-│   │   └── video-gen.py
-│   ├── media-understand/ # AI 多媒体理解
+│   │   └── image-gen.js
+│   ├── maxmotion-edit/       # Remotion video editor integration
+│   │   └── SKILL.md
+│   ├── media-processing/     # Audio/video processing (ffmpeg)
+│   │   └── SKILL.md
+│   ├── media-understand/     # AI media understanding
 │   │   ├── SKILL.md
 │   │   └── media-understand.js
-│   ├── skill-creator/    # 创建项目级 Skill
+│   ├── memory/               # Long-term memory across compacts
+│   │   ├── SKILL.md
+│   │   └── memory.py
+│   ├── skill-creator/        # Project-level skill creator
 │   │   ├── SKILL.md
 │   │   ├── scripts/
 │   │   └── references/
-│   └── youtube-download/ # YouTube 下载
+│   ├── video-gen/            # AI video generation
+│   │   ├── SKILL.md
+│   │   └── video-gen.py
+│   └── youtube-download/     # YouTube download
 │       └── SKILL.md
-├── CLAUDE.md             # This file
-└── README.md             # Documentation
+├── CLAUDE.md                 # This file
+└── README.md                 # Documentation
 ```
 
 ## Skills
 
-| Skill | 功能 | 触发词 |
-|-------|------|--------|
-| audio-transcribe | 语音转文字（Whisper） | 语音转文字、音频转文字、transcribe |
-| browser | 浏览器自动化（Playwright + CDP） | 打开网页、截图、click、fill、automate |
-| media-processing | 音视频处理（裁剪、合并、提取音频、转码等） | 裁剪视频、合并视频、提取音频、压缩视频、trim、merge、extract audio |
-| image-gen | AI 图片生成（OpenRouter API） | 生成图片、画图、generate image |
-| video-gen | AI 视频生成（Veo/Sora） | 生成视频、文生视频、图生视频、generate video |
-| media-understand | AI 多媒体理解（Gemini 2.5 Flash） | 理解图片、分析视频、transcribe audio |
-| skill-creator | 创建项目级 Skill（保存到 .claude/skills/） | 创建skill、提取经验、create skill |
-| youtube-download | YouTube/B站视频下载（yt-dlp） | 下载视频、download youtube、下载B站 |
+| Skill | Description | Triggers |
+|-------|-------------|----------|
+| audio-transcribe | Speech to text (Whisper) | transcribe audio, speech to text, generate subtitles |
+| browser | Browser automation (Playwright + CDP) | go to url, screenshot, click, fill, automate |
+| image-gen | AI image generation (OpenRouter API) | generate image, draw, create image |
+| maxmotion-edit | Remotion video editor integration | triggered by `<editor />` XML tag |
+| media-processing | Audio/video processing (trim, merge, extract, transcode) | trim video, merge videos, extract audio, compress video |
+| media-understand | AI media understanding (Gemini 2.5 Pro) | analyze image, summarize video, transcribe audio |
+| memory | Long-term memory across compacts | read memory, get context, check history |
+| skill-creator | Project-level skill creator (saved to .claude/skills/) | create skill, extract experience |
+| video-gen | AI video generation (Veo/Sora) | generate video, text to video, image to video |
+| youtube-download | YouTube/Bilibili video download (yt-dlp) | download video, download youtube |
 
 ## Commands
 
-| Command | 功能 |
-|---------|------|
-| /release | 发布新版本：升级小版本号，创建 PR 到 main |
+| Command | Description |
+|---------|-------------|
+| /release | Release new version: bump minor version, create PR to main |
 
 ## Adding Skills
 
-1. 在 `skills/` 下创建子目录
-2. 创建 `SKILL.md` 文件，包含：
-   - YAML frontmatter（`name` 和 `description` 必需）
-   - 详细的执行步骤
+1. Create a subdirectory under `skills/`
+2. Create a `SKILL.md` file with:
+   - YAML frontmatter (`name` and `description` required)
+   - Detailed execution steps
 
 ```yaml
 ---
 name: skill-name
-description: 功能描述。Use when user wants to 触发词1, 触发词2, trigger1, trigger2.
+description: What it does. Use when users ask to trigger1, trigger2.
 ---
 ```
 
@@ -84,6 +92,6 @@ claude --plugin-dir .
 
 ## Notes
 
-- `plugin.json` 必须放在 `.claude-plugin/` 目录
-- Skills 使用中英双语触发词，方便不同用户
-- 面向非技术用户，交互使用简单友好的语言
+- `plugin.json` must be placed in the `.claude-plugin/` directory
+- Generated files (images, videos) default to `$MAX_PROJECT_PATH`
+- Designed for non-technical users with simple, friendly interactions

@@ -575,13 +575,13 @@ def cmd_goto(client: BrowserClient, args):
 
 
 def _resize_if_needed(image_path: str, max_size: int = 1568):
-    """缩放图片，保持宽高比，确保最长边不超过 max_size"""
+    """Resize image preserving aspect ratio so the longest edge does not exceed max_size."""
     from PIL import Image
 
     with Image.open(image_path) as img:
         w, h = img.size
         if w <= max_size and h <= max_size:
-            return  # 无需缩放
+            return  # no resize needed
 
         ratio = max_size / max(w, h)
         new_size = (int(w * ratio), int(h * ratio))

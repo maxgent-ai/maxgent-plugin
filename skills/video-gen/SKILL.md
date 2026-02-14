@@ -1,32 +1,32 @@
 ---
 name: video-gen
-description: 使用 AI 生成视频，支持默认高质量路由（Veo 3.1 / Sora 2 Pro / Kling v3 Pro）和首尾帧控制。Use when user wants to 生成视频, 文生视频, 图生视频, 首尾帧, text to video, image to video.
+description: AI video generation with text-to-video, image-to-video, and first/last frame control. Use when users ask to generate or create videos from text prompts or images.
 ---
 
 # Video Generator
 
-通过 Maxgent FAL API proxy 生成视频，支持文本、图生视频和首尾帧模式。
+Generate videos via Maxgent FAL API proxy. Supports text-to-video, image-to-video, and first/last frame mode.
 
 ## Prerequisites
 
-1. `MAX_API_KEY` 环境变量（Max 自动注入）
-2. Python 3.10+（脚本支持 `uv run` 或 `python3`）
+1. `MAX_API_KEY` environment variable (auto-injected by Max)
+2. Python 3.10+ (supports `uv run` or `python3`)
 
 ## Routing
 
-1. 默认自动路由（高质量）
-   - 文生：`fal-ai/veo3.1`
-   - 图生：`fal-ai/sora-2/image-to-video/pro`
-2. 可选显式模型
+1. Default auto-routing (high quality)
+   - Text-to-video: `fal-ai/veo3.1`
+   - Image-to-video: `fal-ai/sora-2/image-to-video/pro`
+2. Optional explicit models
    - `veo-3.1`
    - `sora-2-pro`
    - `kling-v3-pro`
    - `kling-v3-standard`
 
-首尾帧默认路由：
+First/last frame default routing:
 
 1. `fal-ai/veo3.1/first-last-frame-to-video`
-2. `--fast-first-last` 时使用 `fal-ai/veo3.1/fast/first-last-frame-to-video`
+2. With `--fast-first-last`: `fal-ai/veo3.1/fast/first-last-frame-to-video`
 
 ## Usage
 
@@ -37,28 +37,30 @@ uv run skills/video-gen/video-gen.py "MODEL" "PROMPT" "SIZE" "SECONDS" "OUTPUT_D
   [--enhance-prompt true|false] [--negative-prompt TEXT] [--cfg-scale N]
 ```
 
-参数说明：
+Parameters:
 
-1. `MODEL`：`auto`（推荐）、`veo-3.1`、`sora-2-pro`、`kling-v3-pro`、`kling-v3-standard`
-2. `SIZE`：`720P`、`1080P`、`1280x720`、`720x1280`
-3. `SECONDS`：如 `8` 或 `8s`
-4. `INPUT_IMAGE`：旧参数兼容，等价 `--start-image`
-5. `--frame-mode`
-   - `auto`：有 `--end-image` 时自动走首尾帧
-   - `start`：仅首帧图生视频
-   - `start-end`：强制首尾帧（必须同时提供首尾图）
+1. `MODEL`: `auto` (recommended), `veo-3.1`, `sora-2-pro`, `kling-v3-pro`, `kling-v3-standard`
+2. `PROMPT`: video description
+3. `SIZE`: `720P`, `1080P`, `1280x720`, `720x1280`
+4. `SECONDS`: e.g. `8` or `8s`
+5. `OUTPUT_DIR`: output directory — **default to `$MAX_PROJECT_PATH`** (the user's project root)
+6. `INPUT_IMAGE`: legacy param, equivalent to `--start-image`
+7. `--frame-mode`
+   - `auto`: automatically uses first/last frame when `--end-image` is provided
+   - `start`: start-frame image-to-video only
+   - `start-end`: force first/last frame (both images required)
 
 ## Examples
 
 ```bash
-# 文生视频（默认路由）
-uv run skills/video-gen/video-gen.py auto "一只金毛犬在海边奔跑，镜头跟随" "720P" "8" "."
+# Text-to-video (default routing)
+uv run skills/video-gen/video-gen.py auto "a golden retriever running on the beach, camera follows" "720P" "8" "$MAX_PROJECT_PATH"
 
-# 图生视频（Sora Pro）
-uv run skills/video-gen/video-gen.py sora-2-pro "让人物微笑并挥手" "1280x720" "8" "." "/path/to/start.jpg"
+# Image-to-video (Sora Pro)
+uv run skills/video-gen/video-gen.py sora-2-pro "make the person smile and wave" "1280x720" "8" "$MAX_PROJECT_PATH" "/path/to/start.jpg"
 
-# 首尾帧（Veo first/last）
-uv run skills/video-gen/video-gen.py auto "从冬天场景平滑过渡到春天" "1080P" "8" "." \
+# First/last frame (Veo)
+uv run skills/video-gen/video-gen.py auto "smooth transition from winter to spring" "1080P" "8" "$MAX_PROJECT_PATH" \
   --start-image "/path/to/start.jpg" \
   --end-image "/path/to/end.jpg" \
   --frame-mode start-end
@@ -66,8 +68,8 @@ uv run skills/video-gen/video-gen.py auto "从冬天场景平滑过渡到春天"
 
 ## Instructions
 
-1. 检查 `MAX_API_KEY`。
-2. 用 AskUserQuestion 收集：prompt、时长、比例、是否首尾帧、质量档位。
-3. 如果是本地图片，脚本会自动走上传代理换成可访问 URL。
-4. 执行后等待队列完成并下载输出 mp4。
-5. 返回保存路径和失败原因（如超时/配额/输入不合法）。
+1. Check `MAX_API_KEY`.
+2. Use AskUserQuestion to collect: prompt, duration, resolution, first/last frame option, quality tier. Default output path to `$MAX_PROJECT_PATH`.
+3. For local images, the script auto-uploads via proxy to get an accessible URL.
+4. Wait for queue completion and download the output mp4.
+5. Return the saved path and failure reason if any (timeout / quota / invalid input).

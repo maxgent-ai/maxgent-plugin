@@ -1,39 +1,39 @@
 # Release
 
-发布新版本：升级小版本号，更新 CLAUDE.md，创建 PR 到 main 分支。
+Release a new version: bump the minor version, update CLAUDE.md, and create a PR to main.
 
 ## Instructions
 
-按以下步骤执行发布流程：
+Follow these steps to execute the release process:
 
-### Step 1: 询问用户确认
+### Step 1: Confirm with user
 
-从 `.claude-plugin/plugin.json` 读取当前版本号，计算新版本号（升级小版本），然后询问用户是否要升级：
+Read the current version from `.claude-plugin/plugin.json`, compute the new version (bump minor), then ask the user to confirm:
 
-"当前版本是 X.Y.Z，是否要升级小版本到 X.(Y+1).0？"
+"Current version is X.Y.Z. Bump minor version to X.(Y+1).0?"
 
-升级小版本号规则：
+Minor version bump rules:
 - 0.1.0 -> 0.2.0
 - 0.2.5 -> 0.3.0
 - 1.0.0 -> 1.1.0
 
-如果用户选择"否"，则不做升级。
+If the user declines, do not proceed.
 
-### Step 3: 创建 release 分支
+### Step 2: Create release branch
 
 ```bash
 git checkout -b release/vX.Y.Z
 ```
 
-分支名使用新版本号。
+Branch name uses the new version number.
 
-### Step 4: 更新 plugin.json
+### Step 3: Update plugin.json
 
-修改 `.claude-plugin/plugin.json` 中的 `version` 字段为新版本号。
+Update the `version` field in `.claude-plugin/plugin.json` to the new version.
 
-### Step 5: 更新 CLAUDE.md
+### Step 4: Update CLAUDE.md
 
-在 CLAUDE.md 文件开头更新版本号：
+Update the version number at the top of CLAUDE.md:
 
 ```markdown
 # Maxgent Plugin
@@ -41,22 +41,22 @@ git checkout -b release/vX.Y.Z
 > Version: X.Y.Z
 ```
 
-### Step 6: 提交更改
+### Step 5: Commit changes
 
 ```bash
 git add .claude-plugin/plugin.json CLAUDE.md
 git commit -m "chore: bump version to vX.Y.Z"
 ```
 
-### Step 7: 推送分支
+### Step 6: Push branch
 
 ```bash
 git push -u origin release/vX.Y.Z
 ```
 
-### Step 8: 创建 PR
+### Step 7: Create PR
 
-使用 gh 命令创建 PR：
+Use the gh command to create a PR:
 
 ```bash
 gh pr create --base main --title "Release vX.Y.Z" --body "$(cat <<'EOF'
@@ -74,9 +74,9 @@ EOF
 )"
 ```
 
-### Step 9: 返回结果
+### Step 8: Report results
 
-告诉用户：
-- 新版本号
-- PR 链接
-- 下一步操作（review 和 merge PR）
+Tell the user:
+- New version number
+- PR link
+- Next steps (review and merge the PR)
