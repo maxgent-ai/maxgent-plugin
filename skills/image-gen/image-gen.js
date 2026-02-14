@@ -13,18 +13,17 @@ import {
   parseOptions,
 } from "../_shared/fal-client.js";
 
-const MODEL_ARG = process.argv[2] || "auto";
-const PROMPT = process.argv[3] || "A beautiful sunset over mountains";
-const ASPECT_RATIO = process.argv[4] || "1:1";
-const NUM_IMAGES = Math.max(1, parseInt(process.argv[5] || "1", 10));
-const OUTPUT_DIR = process.argv[6] || ".";
-const INPUT_IMAGE = process.argv[7] || "";
-
-const cliOptions = parseOptions(process.argv.slice(8));
-const OUTPUT_FORMAT = String(cliOptions["output-format"] || process.env.IMAGE_OUTPUT_FORMAT || "png").toLowerCase();
-const SEED = cliOptions.seed ? Number(cliOptions.seed) : undefined;
-const GUIDANCE_SCALE = cliOptions["guidance-scale"] ? Number(cliOptions["guidance-scale"]) : undefined;
-const NUM_INFERENCE_STEPS = cliOptions.steps ? Number(cliOptions.steps) : undefined;
+const opts = parseOptions(process.argv.slice(2));
+const MODEL_ARG = opts.model || "auto";
+const PROMPT = opts.prompt || "A beautiful sunset over mountains";
+const ASPECT_RATIO = opts["aspect-ratio"] || "1:1";
+const NUM_IMAGES = Math.max(1, parseInt(opts["num-images"] || "1", 10));
+const OUTPUT_DIR = opts["output-dir"] || ".";
+const INPUT_IMAGE = opts["input-image"] || "";
+const OUTPUT_FORMAT = String(opts["output-format"] || process.env.IMAGE_OUTPUT_FORMAT || "png").toLowerCase();
+const SEED = opts.seed ? Number(opts.seed) : undefined;
+const GUIDANCE_SCALE = opts["guidance-scale"] ? Number(opts["guidance-scale"]) : undefined;
+const NUM_INFERENCE_STEPS = opts.steps ? Number(opts.steps) : undefined;
 
 if (!process.env.MAX_API_KEY) {
   console.error("Error: Missing MAX_API_KEY environment variable");

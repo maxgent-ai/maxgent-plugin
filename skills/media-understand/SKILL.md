@@ -29,28 +29,32 @@ Analyze multimedia content via Maxgent FAL API proxy, using the `default` route.
 ## Usage
 
 ```bash
-bun skills/media-understand/media-understand.js <media_path_or_url> [prompt] [language] \
-  [--model MODEL_ID] [--max-tokens N] [--temperature X]
+bun skills/media-understand/media-understand.js \
+  --media PATH_OR_URL --prompt "PROMPT" \
+  [--language chinese|english] [--model MODEL_ID] \
+  [--max-tokens N] [--temperature X]
 ```
 
 Parameters:
 
-1. `media_path_or_url`: local file path or YouTube URL
-2. `prompt`: analysis question
-3. `language`: `chinese` / `english`
-4. `--model`: override the default model
+- `--media`: local file path or YouTube URL
+- `--prompt`: analysis question
+- `--language`: `chinese` (default) or `english`
+- `--model`: override the default model
+- `--max-tokens`: max output tokens (default `4096`)
+- `--temperature`: sampling temperature (default `0.2`)
 
 ## Examples
 
 ```bash
-# Image OCR (default route)
-bun skills/media-understand/media-understand.js ./screenshot.png "extract all text from this image" english
+# Image OCR
+bun skills/media-understand/media-understand.js --media ./screenshot.png --prompt "extract all text from this image" --language english
 
 # Video summary (YouTube)
-bun skills/media-understand/media-understand.js "https://youtube.com/watch?v=xxx" "summarize this video" english
+bun skills/media-understand/media-understand.js --media "https://youtube.com/watch?v=xxx" --prompt "summarize this video" --language english
 
 # Local audio analysis
-bun skills/media-understand/media-understand.js ./meeting.m4a "summarize key points and list action items" english
+bun skills/media-understand/media-understand.js --media ./meeting.m4a --prompt "summarize key points and list action items" --language english
 ```
 
 ## Instructions

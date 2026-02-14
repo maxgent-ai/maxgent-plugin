@@ -265,7 +265,7 @@ When creating a new skill from scratch, always run the `init_skill.py` script. T
 Usage:
 
 ```bash
-skills/skill-creator/scripts/init_skill.py <skill-name> --path <output-directory>
+skills/skill-creator/scripts/init_skill.py --name <skill-name> --path <output-directory>
 ```
 
 The script:
@@ -335,7 +335,7 @@ $MAX_PROJECT_PATH/.claude/skills/<skill-name>/
 When running `init_skill.py`, use `$MAX_PROJECT_PATH/.claude/skills/` as the output path:
 
 ```bash
-skills/skill-creator/scripts/init_skill.py <skill-name> --path "$MAX_PROJECT_PATH/.claude/skills"
+skills/skill-creator/scripts/init_skill.py --name <skill-name> --path "$MAX_PROJECT_PATH/.claude/skills"
 ```
 
 If Python scripts are created, make them executable:
