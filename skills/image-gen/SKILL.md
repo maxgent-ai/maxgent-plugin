@@ -58,4 +58,7 @@ bun skills/image-gen/image-gen.js --model auto --prompt "change background to a 
 1. Check that `MAX_API_KEY` exists.
 2. Use AskUserQuestion to collect: edit or generate, prompt, aspect ratio, count. Default output path to `$MAX_PROJECT_PATH`.
 3. Run the script and wait for result.
-4. Report the output path; on failure, return a clear error and suggest retry options (switch model / simplify prompt).
+4. On success, report the output path.
+5. On failure:
+   - **HTTP 402 (insufficient credits)**: **Stop immediately. Do NOT retry.** Tell the user their API credits are exhausted.
+   - Other errors: retry once with a different model or simplified prompt. If it fails again, stop and report the error.
