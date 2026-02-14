@@ -1,15 +1,15 @@
 ---
 name: youtube-download
-description: 使用 yt-dlp 下载 YouTube 视频、音频或字幕。Use when user wants to 下载视频, 下载YouTube, youtube下载, 下载油管, download youtube, download video, 下载B站, bilibili下载.
+description: Download videos, audio, or subtitles from YouTube, Bilibili, and other sites using yt-dlp. Use when users ask to download online videos or extract audio from video URLs.
 ---
 
 # YouTube Downloader
 
-使用 yt-dlp 下载 YouTube 视频、音频或字幕，支持使用 Chrome cookies 访问需要登录的内容。
+Download YouTube videos, audio, or subtitles using yt-dlp, with Chrome cookies for authenticated content.
 
 ## Prerequisites
 
-使用 `uvx` 运行 yt-dlp，无需手动安装。
+Uses `uvx` to run yt-dlp — no manual installation required.
 
 ## Usage
 
@@ -17,186 +17,167 @@ When the user wants to download from YouTube: $ARGUMENTS
 
 ## Instructions
 
-你是一个视频下载助手，使用 yt-dlp 帮助用户下载 YouTube 等网站的视频。
+**Important**: All yt-dlp commands use `uvx yt-dlp`. uvx handles installation and environment isolation automatically.
 
-**重要**: 所有 yt-dlp 命令都使用 `uvx yt-dlp` 来运行，uvx 会自动处理安装和环境隔离。
+### Step 1: Get video URL
 
-### Step 1: 获取视频 URL
+If the user has not provided a video URL, ask them to provide one.
 
-如果用户没有提供视频 URL，询问他们提供一个。
-
-支持的网站包括但不限于：
+Supported sites include but are not limited to:
 - YouTube (youtube.com, youtu.be)
 - Bilibili (bilibili.com)
 - Twitter/X (twitter.com, x.com)
-- 以及 yt-dlp 支持的其他网站
+- And other sites supported by yt-dlp
 
-### Step 2: 解析视频信息
+### Step 2: Parse video info
 
-使用 yt-dlp 获取视频信息，使用 Chrome cookies：
+Fetch video info with yt-dlp using Chrome cookies:
 
 ```bash
 uvx yt-dlp --cookies-from-browser chrome -j "$VIDEO_URL" 2>/dev/null
 ```
 
-从 JSON 输出中提取关键信息：
-- `title`: 视频标题
-- `duration`: 时长（秒）
-- `formats`: 可用格式列表
-- `subtitles`: 可用字幕
-- `automatic_captions`: 自动生成的字幕
+Extract key info from the JSON output:
+- `title`: video title
+- `duration`: duration (seconds)
+- `formats`: available format list
+- `subtitles`: available subtitles
+- `automatic_captions`: auto-generated captions
 
-向用户展示：
-- 视频标题
-- 时长
-- 可用的视频质量（如 1080p, 720p, 480p 等）
-- 可用的音频格式
-- 可用的字幕语言
+Show the user:
+- Video title
+- Duration
+- Available video qualities (e.g. 1080p, 720p, 480p)
+- Available audio formats
+- Available subtitle languages
 
-如果解析失败，可能是需要登录或视频不可用，告知用户具体原因。
+If parsing fails, it may require login or the video is unavailable — inform the user of the specific reason.
 
-### Step 3: 询问用户下载选项
+### Step 3: Ask user for download options
 
-**⚠️ 必须：使用 AskUserQuestion 工具收集用户的偏好。不要跳过这一步。**
+**Warning: You MUST use AskUserQuestion to collect user preferences. Do not skip this step.**
 
-使用 AskUserQuestion 工具收集以下信息：
+Use AskUserQuestion to collect the following:
 
-1. **下载内容**：你想下载什么？
-   - 选项：
-     - "视频+音频 - 完整视频文件 (Recommended)"
-     - "仅音频 - MP3/M4A 格式"
-     - "仅字幕 - SRT/VTT 格式"
-     - "视频+音频+字幕 - 全部下载"
+1. **Download content**: What do you want to download?
+   - Options:
+     - "Video + Audio - Complete video file (Recommended)"
+     - "Audio only - MP3/M4A format"
+     - "Subtitles only - SRT/VTT format"
+     - "Video + Audio + Subtitles - Download all"
 
-2. **视频质量**（如果选择下载视频）：选择视频质量
-   - 选项：
-     - "最高质量 (Recommended)"
+2. **Video quality** (if downloading video): Choose video quality
+   - Options:
+     - "Best quality (Recommended)"
      - "1080p - Full HD"
      - "720p - HD"
-     - "480p - SD（节省空间）"
-     - "最低质量（最小文件）"
+     - "480p - SD (save space)"
+     - "Lowest quality (smallest file)"
 
-3. **音频格式**（如果选择仅下载音频）：选择音频格式
-   - 选项：
-     - "MP3 - 通用格式 (Recommended)"
-     - "M4A - 高质量"
-     - "最佳质量（保持原始格式）"
+3. **Audio format** (if downloading audio only): Choose audio format
+   - Options:
+     - "MP3 - Universal format (Recommended)"
+     - "M4A - High quality"
+     - "Best quality (keep original format)"
 
-4. **字幕语言**（如果有字幕可用）：选择字幕语言
-   - 根据解析结果动态生成选项
-   - 常见选项：中文、英文、日文、自动生成字幕
+4. **Subtitle language** (if subtitles available): Choose subtitle language
+   - Dynamically generate options based on parsed results
+   - Common options: Chinese, English, Japanese, auto-generated captions
 
-5. **输出路径**：保存到哪里？
-   - 建议默认：当前目录
-   - 让用户可以自定义路径
+5. **Output path**: Where to save?
+   - Default: current directory
+   - Allow custom path
 
-### Step 4: 构建 yt-dlp 命令
+### Step 4: Build yt-dlp command
 
-根据用户选择，构建 yt-dlp 命令：
+Build the yt-dlp command based on user choices:
 
-#### 基础选项（始终使用）
+#### Base options (always used)
 
 ```bash
---cookies-from-browser chrome  # 使用 Chrome cookies
--o "%(title)s.%(ext)s"         # 输出文件名格式
---no-playlist                   # 不下载播放列表
+--cookies-from-browser chrome  # Use Chrome cookies
+-o "%(title)s.%(ext)s"         # Output filename format
+--no-playlist                   # Don't download playlists
 ```
 
-#### 视频+音频下载
+#### Video + Audio download
 
 ```bash
-# 最高质量
+# Best quality
 uvx yt-dlp --cookies-from-browser chrome -f "bestvideo+bestaudio/best" --merge-output-format mp4 -o "OUTPUT_PATH/%(title)s.%(ext)s" "URL"
 
-# 指定分辨率
+# Specific resolution
 uvx yt-dlp --cookies-from-browser chrome -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" --merge-output-format mp4 -o "OUTPUT_PATH/%(title)s.%(ext)s" "URL"
 
 # 720p
 uvx yt-dlp --cookies-from-browser chrome -f "bestvideo[height<=720]+bestaudio/best[height<=720]" --merge-output-format mp4 -o "OUTPUT_PATH/%(title)s.%(ext)s" "URL"
 ```
 
-#### 仅下载音频
+#### Audio only download
 
 ```bash
-# MP3 格式
+# MP3 format
 uvx yt-dlp --cookies-from-browser chrome -x --audio-format mp3 --audio-quality 0 -o "OUTPUT_PATH/%(title)s.%(ext)s" "URL"
 
-# M4A 格式
+# M4A format
 uvx yt-dlp --cookies-from-browser chrome -x --audio-format m4a --audio-quality 0 -o "OUTPUT_PATH/%(title)s.%(ext)s" "URL"
 
-# 最佳质量（原始格式）
+# Best quality (original format)
 uvx yt-dlp --cookies-from-browser chrome -x --audio-quality 0 -o "OUTPUT_PATH/%(title)s.%(ext)s" "URL"
 ```
 
-#### 仅下载字幕
+#### Subtitles only download
 
 ```bash
-# 下载所有字幕
+# Download all subtitles
 uvx yt-dlp --cookies-from-browser chrome --write-subs --skip-download -o "OUTPUT_PATH/%(title)s.%(ext)s" "URL"
 
-# 下载特定语言字幕
+# Download specific language subtitles
 uvx yt-dlp --cookies-from-browser chrome --write-subs --sub-langs "zh,en" --skip-download -o "OUTPUT_PATH/%(title)s.%(ext)s" "URL"
 
-# 下载自动生成的字幕
+# Download auto-generated captions
 uvx yt-dlp --cookies-from-browser chrome --write-auto-subs --sub-langs "zh,en" --skip-download -o "OUTPUT_PATH/%(title)s.%(ext)s" "URL"
 
-# 转换为 SRT 格式
+# Convert to SRT format
 uvx yt-dlp --cookies-from-browser chrome --write-subs --sub-format srt --convert-subs srt --skip-download -o "OUTPUT_PATH/%(title)s.%(ext)s" "URL"
 ```
 
-#### 视频+字幕一起下载
+#### Video + Subtitles together
 
 ```bash
 uvx yt-dlp --cookies-from-browser chrome -f "bestvideo+bestaudio/best" --merge-output-format mp4 --write-subs --sub-langs "zh,en" --embed-subs -o "OUTPUT_PATH/%(title)s.%(ext)s" "URL"
 ```
 
-### Step 5: 执行下载
+### Step 5: Execute download
 
-1. 执行前向用户展示完整的 yt-dlp 命令
-2. 执行命令并显示下载进度
-3. 报告成功/失败
+1. Show the full yt-dlp command to the user before execution
+2. Run the command and show download progress
+3. Report success or failure
 
-### Step 6: 验证输出
+### Step 6: Verify output
 
-下载完成后：
+After download completes:
 
 ```bash
 ls -la "OUTPUT_PATH"
 ```
 
-报告：
-- 下载的文件名和大小
-- 如果下载了字幕，列出字幕文件
-- 任何警告或问题
+Report:
+- Downloaded filename and size
+- List subtitle files if downloaded
+- Any warnings or issues
 
-### 常见问题处理
+### Troubleshooting
 
-**需要登录的内容**：
-- 确保用户已在 Chrome 中登录对应网站
-- 如果仍然失败，建议用户手动导出 cookies
+**Login-required content**:
+- Ensure the user is logged in to the site in Chrome
+- If still failing, suggest manually exporting cookies
 
-**地区限制**：
-- 提示用户可能需要使用代理
-- 使用 `--geo-bypass` 尝试绕过限制
+**Region-restricted**:
+- Inform the user they may need a proxy
+- Try `--geo-bypass` to bypass restrictions
 
-**下载失败**：
-- 检查 URL 是否正确
-- 尝试更新 yt-dlp：`uvx --refresh yt-dlp --version`
-- 检查网络连接
-
-### 示例交互
-
-用户：帮我下载这个 YouTube 视频 https://www.youtube.com/watch?v=xxx
-
-助手：
-1. 解析视频信息，展示标题、时长、可用质量
-2. 使用 AskUserQuestion 询问下载选项
-3. 执行下载（使用 uvx yt-dlp）
-4. 报告结果
-
-### 交互风格
-
-- 使用简单友好的语言
-- 清晰展示视频信息和可用选项
-- 如果遇到错误，提供清晰的解决方案
-- 下载成功后给予积极反馈
+**Download failure**:
+- Check if the URL is correct
+- Try updating yt-dlp: `uvx --refresh yt-dlp --version`
+- Check network connectivity

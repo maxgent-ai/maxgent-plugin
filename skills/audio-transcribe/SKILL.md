@@ -1,15 +1,15 @@
 ---
 name: audio-transcribe
-description: 使用 Whisper 将音频/视频转换为文字，支持词级别时间戳。Use when user wants to 语音转文字, 音频转文字, 视频转文字, 字幕生成, transcribe audio, speech to text, generate subtitles, 识别语音.
+description: Speech-to-text transcription using Whisper with word-level timestamps. Use when users ask to transcribe audio or video to text, generate subtitles, or recognize speech.
 ---
 
 # Audio Transcriber
 
-使用 WhisperX 进行语音识别，支持多种语言和词级别时间戳对齐。
+Speech recognition using WhisperX with multi-language support and word-level timestamp alignment.
 
 ## Prerequisites
 
-需要 Python 3.12（uv 会自动管理）。
+Requires Python 3.12 (uv manages this automatically).
 
 ## Usage
 
@@ -17,164 +17,144 @@ When the user wants to transcribe audio/video: $ARGUMENTS
 
 ## Instructions
 
-你是一个语音转文字助手，使用 WhisperX 帮助用户将音频转换为文字。请按以下步骤操作：
+### Step 1: Get input file
 
-### Step 1: 获取输入文件
+If the user has not provided an input file path, ask them to provide one.
 
-如果用户没有提供输入文件路径，询问他们提供一个。
+Supported formats:
+- Audio: MP3, WAV, FLAC, M4A, OGG, etc.
+- Video: MP4, MKV, MOV, AVI, etc. (audio is extracted automatically)
 
-支持的格式：
-- 音频：MP3, WAV, FLAC, M4A, OGG, etc.
-- 视频：MP4, MKV, MOV, AVI, etc.（会自动提取音频）
-
-验证文件存在：
+Verify the file exists:
 
 ```bash
 ls -la "$INPUT_FILE"
 ```
 
-### Step 2: 询问用户配置
+### Step 2: Ask user for configuration
 
-**⚠️ 必须：使用 AskUserQuestion 工具收集用户的偏好。不要跳过这一步。**
+**Warning: You MUST use AskUserQuestion to collect user preferences. Do not skip this step.**
 
-使用 AskUserQuestion 工具收集以下信息：
+Use AskUserQuestion to collect the following:
 
-1. **模型大小**：选择识别模型
-   - 选项：
-     - "base - 平衡速度和准确度 (Recommended)"
-     - "tiny - 最快，准确度较低"
-     - "small - 较快，准确度适中"
-     - "medium - 较慢，准确度较高"
-     - "large-v2 - 最慢，准确度最高"
+1. **Model size**: Choose the recognition model
+   - Options:
+     - "base - Balanced speed and accuracy (Recommended)"
+     - "tiny - Fastest, lower accuracy"
+     - "small - Faster, moderate accuracy"
+     - "medium - Slower, higher accuracy"
+     - "large-v2 - Slowest, highest accuracy"
 
-2. **语言**：音频是什么语言？
-   - 选项：
-     - "自动检测 (Recommended)"
-     - "中文 (zh)"
-     - "英文 (en)"
-     - "日文 (ja)"
-     - "其他语言"
+2. **Language**: What language is the audio?
+   - Options:
+     - "Auto-detect (Recommended)"
+     - "Chinese (zh)"
+     - "English (en)"
+     - "Japanese (ja)"
+     - "Other"
 
-3. **词级别对齐**：是否需要词级别时间戳？
-   - 选项：
-     - "是 - 精确到每个词的时间 (Recommended)"
-     - "否 - 只需要句子级别时间（更快）"
+3. **Word-level alignment**: Do you need word-level timestamps?
+   - Options:
+     - "Yes - Precise timing for each word (Recommended)"
+     - "No - Sentence-level timing only (faster)"
 
-4. **输出格式**：输出什么格式？
-   - 选项：
-     - "TXT - 纯文本带时间戳 (Recommended)"
-     - "SRT - 字幕格式"
-     - "VTT - Web 字幕格式"
-     - "JSON - 结构化数据（含词级别信息）"
+4. **Output format**: What format to output?
+   - Options:
+     - "TXT - Plain text with timestamps (Recommended)"
+     - "SRT - Subtitle format"
+     - "VTT - Web subtitle format"
+     - "JSON - Structured data (with word-level info)"
 
-5. **输出路径**：保存到哪里？
-   - 建议默认：与输入文件同目录，文件名为 `原文件名.txt`（或对应格式）
+5. **Output path**: Where to save?
+   - Default: same directory as input file, named `<original_name>.txt` (or matching format)
 
-### Step 3: 执行转录脚本
+### Step 3: Run transcription script
 
-使用 skill 目录下的 `transcribe.py` 脚本：
+Use the `transcribe.py` script in the skill directory:
 
 ```bash
 uv run /path/to/skills/audio-transcribe/transcribe.py "INPUT_FILE" [OPTIONS]
 ```
 
-参数说明：
-- `--model`, `-m`: 模型大小 (tiny/base/small/medium/large-v2)
-- `--language`, `-l`: 语言代码 (en/zh/ja/...)，不指定则自动检测
-- `--no-align`: 跳过词级别对齐
-- `--no-vad`: 禁用 VAD 过滤（如果转录有时间跳跃/遗漏，使用此选项）
-- `--output`, `-o`: 输出文件路径
-- `--format`, `-f`: 输出格式 (srt/vtt/txt/json)
+Parameters:
+- `--model`, `-m`: Model size (tiny/base/small/medium/large-v2)
+- `--language`, `-l`: Language code (en/zh/ja/...), auto-detect if not specified
+- `--no-align`: Skip word-level alignment
+- `--no-vad`: Disable VAD filtering (use if transcription has time jumps or missing segments)
+- `--output`, `-o`: Output file path
+- `--format`, `-f`: Output format (srt/vtt/txt/json)
 
-示例：
+Examples:
 
 ```bash
-# 基础转录（自动检测语言）
+# Basic transcription (auto-detect language)
 uv run skills/audio-transcribe/transcribe.py "video.mp4" -o "video.txt"
 
-# 中文转录，输出 SRT 字幕
+# Chinese transcription, output SRT subtitles
 uv run skills/audio-transcribe/transcribe.py "audio.mp3" -l zh -f srt -o "subtitles.srt"
 
-# 快速转录，不做词对齐
+# Fast transcription, skip word alignment
 uv run skills/audio-transcribe/transcribe.py "audio.wav" --no-align -o "transcript.txt"
 
-# 使用更大模型，输出 JSON（含词级别时间戳）
+# Use a larger model, output JSON (with word-level timestamps)
 uv run skills/audio-transcribe/transcribe.py "speech.mp3" -m medium -f json -o "result.json"
 
-# 禁用 VAD 过滤（解决时间跳跃/遗漏问题）
+# Disable VAD filtering (fix time jumps / missing segments)
 uv run skills/audio-transcribe/transcribe.py "audio.mp3" --no-vad -o "transcript.txt"
 ```
 
-### Step 4: 展示结果
+### Step 4: Present results
 
-转录完成后：
+After transcription completes:
 
-1. 告诉用户输出文件的完整路径
-2. 显示部分转录内容预览
-3. 报告总时长和段落数
+1. Show the full output file path
+2. Display a preview of the transcription content
+3. Report total duration and segment count
 
-### 输出格式说明
+### Output format reference
 
-#### TXT 格式
+#### TXT format
 ```
-[00:00:00.000 - 00:00:03.500] 这是第一句话
-[00:00:03.500 - 00:00:07.200] 这是第二句话
+[00:00:00.000 - 00:00:03.500] This is the first sentence
+[00:00:03.500 - 00:00:07.200] This is the second sentence
 ```
 
-#### SRT 格式
+#### SRT format
 ```
 1
 00:00:00,000 --> 00:00:03,500
-这是第一句话
+This is the first sentence
 
 2
 00:00:03,500 --> 00:00:07,200
-这是第二句话
+This is the second sentence
 ```
 
-#### JSON 格式（含词级别）
+#### JSON format (with word-level)
 ```json
 [
   {
     "start": 0.0,
     "end": 3.5,
-    "text": "这是第一句话",
+    "text": "This is the first sentence",
     "words": [
-      {"word": "这是", "start": 0.0, "end": 0.5, "score": 0.95},
+      {"word": "This", "start": 0.0, "end": 0.5, "score": 0.95},
       ...
     ]
   }
 ]
 ```
 
-### 常见问题处理
+### Troubleshooting
 
-**首次运行较慢**：
-- WhisperX 需要下载模型文件，首次运行会比较慢
-- 后续运行会使用缓存的模型
+**Slow on first run**:
+- WhisperX needs to download model files; first run will be slower
+- Subsequent runs use the cached model
 
-**内存不足**：
-- 使用更小的模型（tiny 或 base）
-- 确保系统有足够的内存
+**Out of memory**:
+- Use a smaller model (tiny or base)
+- Ensure the system has enough memory
 
-**识别准确度低**：
-- 尝试使用更大的模型（medium 或 large-v2）
-- 明确指定语言而不是自动检测
-
-### 示例交互
-
-用户：帮我把这个视频转成文字
-
-助手：
-1. 检查 uv ✓
-2. 询问视频文件路径
-3. 使用 AskUserQuestion 询问模型、语言、格式等
-4. 执行转录
-5. 展示结果预览和保存路径
-
-### 交互风格
-
-- 使用简单友好的语言
-- 解释不同模型大小的区别
-- 如果遇到错误，提供清晰的解决方案
-- 转录成功后给予积极反馈
+**Low recognition accuracy**:
+- Try a larger model (medium or large-v2)
+- Explicitly specify the language instead of auto-detect
