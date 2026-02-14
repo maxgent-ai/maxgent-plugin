@@ -1,6 +1,6 @@
 # Maxgent Plugin
 
-A collection of Claude Code skills designed for operations teams - macOS app installation, video processing, and more.
+A collection of Claude Code skills for media generation, browser automation, and developer workflow.
 
 ## Installation
 
@@ -16,23 +16,26 @@ A collection of Claude Code skills designed for operations teams - macOS app ins
 
 | Skill | Description | Triggers |
 |-------|-------------|----------|
-| **audio-extract** | Extract audio from video files | extract audio |
 | **audio-transcribe** | Speech to text using Whisper with word-level timestamps | transcribe, speech to text, generate subtitles |
-| **image-gen** | AI image generation via OpenRouter API (Gemini, Seedream) | generate image, draw, create image |
-| **install-app** | macOS app installation with Homebrew (auto-installs Homebrew if needed, configures USTC mirror) | install app |
-| **video-concat** | Merge multiple video files into one | merge videos, concatenate videos |
-| **video-trim** | Trim video segments with compression options | trim video, cut video |
-| **youtube-download** | Download YouTube/Bilibili videos using yt-dlp with Chrome cookies | download video, download youtube |
+| **browser** | Browser automation with persistent page state (Playwright + CDP) | go to url, screenshot, click, fill, automate |
+| **image-gen** | AI image generation and editing | generate image, draw, create image, edit image |
+| **maxmotion-edit** | Remotion video editor integration | triggered by `<editor />` XML tag |
+| **media-processing** | Audio/video processing with ffmpeg (trim, merge, extract, convert) | trim video, merge videos, extract audio |
+| **media-understand** | AI media understanding and analysis (Gemini 2.5 Pro) | analyze image, summarize video, describe image |
+| **memory** | Long-term memory across context compacts | read memory, get context, check history |
+| **skill-creator** | Guide for creating project-level skills | create skill, extract experience |
+| **video-gen** | AI video generation (Veo/Sora) with text/image-to-video | generate video, text to video, image to video |
+| **youtube-download** | Download YouTube/Bilibili videos using yt-dlp | download video, download youtube |
 
 ## Usage Examples
 
 ```
-Extract the audio from this video
 Transcribe this audio to text
+Go to https://example.com and take a screenshot
 Generate an image of a cat under the starry sky
-Install Chrome
-Merge these videos into one
 Trim video from 1:30 to 3:45
+Analyze this image and describe what you see
+Generate a video of a golden retriever running on the beach
 Download this YouTube video
 ```
 
@@ -49,16 +52,19 @@ claude --plugin-dir .
 ```
 maxgent-plugin/
 ├── .claude-plugin/
-│   ├── plugin.json        # Plugin manifest
-│   └── marketplace.json   # Marketplace config
+│   └── plugin.json           # Plugin manifest
 ├── skills/
-│   ├── audio-extract/     # Audio extraction from video
-│   ├── audio-transcribe/  # Speech to text (Whisper)
-│   ├── image-gen/         # AI image generation
-│   ├── install-app/       # macOS app installation
-│   ├── video-concat/      # Video merging
-│   ├── video-trim/        # Video trimming
-│   └── youtube-download/  # YouTube/Bilibili download
+│   ├── _shared/              # Shared FAL API client
+│   ├── audio-transcribe/     # Speech to text (Whisper)
+│   ├── browser/              # Browser automation
+│   ├── image-gen/            # AI image generation
+│   ├── maxmotion-edit/       # Remotion video editor
+│   ├── media-processing/     # Audio/video processing (ffmpeg)
+│   ├── media-understand/     # AI media understanding
+│   ├── memory/               # Long-term memory
+│   ├── skill-creator/        # Skill creation guide
+│   ├── video-gen/            # AI video generation
+│   └── youtube-download/     # YouTube/Bilibili download
 ├── CLAUDE.md
 └── README.md
 ```

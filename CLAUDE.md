@@ -10,37 +10,43 @@ A Claude Code plugin for non-technical users, providing automation skills for co
 maxgent-plugin/
 ├── .claude/
 │   └── commands/
-│       └── release.md    # Release new version command
+│       └── release.md        # Release new version command
 ├── .claude-plugin/
-│   └── plugin.json       # Plugin manifest (required)
+│   └── plugin.json           # Plugin manifest (required)
 ├── skills/
-│   ├── _shared/          # Shared FAL API client for skills
+│   ├── _shared/              # Shared FAL API client for skills
 │   │   ├── fal-client.js
 │   │   └── fal_client.py
-│   ├── audio-transcribe/ # Speech to text
+│   ├── audio-transcribe/     # Speech to text
 │   │   ├── SKILL.md
 │   │   └── transcribe.py
-│   ├── browser/          # Browser automation
+│   ├── browser/              # Browser automation
 │   │   ├── SKILL.md
 │   │   └── client.py
-│   ├── media-processing/ # Audio/video processing (ffmpeg)
-│   │   └── SKILL.md
-│   ├── image-gen/        # AI image generation
-│   │   └── SKILL.md
-│   ├── video-gen/        # AI video generation
+│   ├── image-gen/            # AI image generation
 │   │   ├── SKILL.md
-│   │   └── video-gen.py
-│   ├── media-understand/ # AI media understanding
+│   │   └── image-gen.js
+│   ├── maxmotion-edit/       # Remotion video editor integration
+│   │   └── SKILL.md
+│   ├── media-processing/     # Audio/video processing (ffmpeg)
+│   │   └── SKILL.md
+│   ├── media-understand/     # AI media understanding
 │   │   ├── SKILL.md
 │   │   └── media-understand.js
-│   ├── skill-creator/    # Project-level skill creator
+│   ├── memory/               # Long-term memory across compacts
+│   │   ├── SKILL.md
+│   │   └── memory.py
+│   ├── skill-creator/        # Project-level skill creator
 │   │   ├── SKILL.md
 │   │   ├── scripts/
 │   │   └── references/
-│   └── youtube-download/ # YouTube download
+│   ├── video-gen/            # AI video generation
+│   │   ├── SKILL.md
+│   │   └── video-gen.py
+│   └── youtube-download/     # YouTube download
 │       └── SKILL.md
-├── CLAUDE.md             # This file
-└── README.md             # Documentation
+├── CLAUDE.md                 # This file
+└── README.md                 # Documentation
 ```
 
 ## Skills
@@ -49,11 +55,13 @@ maxgent-plugin/
 |-------|-------------|----------|
 | audio-transcribe | Speech to text (Whisper) | transcribe audio, speech to text, generate subtitles |
 | browser | Browser automation (Playwright + CDP) | go to url, screenshot, click, fill, automate |
-| media-processing | Audio/video processing (trim, merge, extract, transcode) | trim video, merge videos, extract audio, compress video |
 | image-gen | AI image generation (OpenRouter API) | generate image, draw, create image |
-| video-gen | AI video generation (Veo/Sora) | generate video, text to video, image to video |
+| maxmotion-edit | Remotion video editor integration | triggered by `<editor />` XML tag |
+| media-processing | Audio/video processing (trim, merge, extract, transcode) | trim video, merge videos, extract audio, compress video |
 | media-understand | AI media understanding (Gemini 2.5 Pro) | analyze image, summarize video, transcribe audio |
+| memory | Long-term memory across compacts | read memory, get context, check history |
 | skill-creator | Project-level skill creator (saved to .claude/skills/) | create skill, extract experience |
+| video-gen | AI video generation (Veo/Sora) | generate video, text to video, image to video |
 | youtube-download | YouTube/Bilibili video download (yt-dlp) | download video, download youtube |
 
 ## Commands
@@ -85,4 +93,5 @@ claude --plugin-dir .
 ## Notes
 
 - `plugin.json` must be placed in the `.claude-plugin/` directory
+- Generated files (images, videos) default to `$MAX_PROJECT_PATH`
 - Designed for non-technical users with simple, friendly interactions
