@@ -19,7 +19,7 @@ Minor version bump rules:
 
 If the user declines, do not proceed.
 
-### Step 3: Create release branch
+### Step 2: Create release branch
 
 ```bash
 git checkout -b release/vX.Y.Z
@@ -27,11 +27,11 @@ git checkout -b release/vX.Y.Z
 
 Branch name uses the new version number.
 
-### Step 4: Update plugin.json
+### Step 3: Update plugin.json
 
 Update the `version` field in `.claude-plugin/plugin.json` to the new version.
 
-### Step 5: Update CLAUDE.md
+### Step 4: Update CLAUDE.md
 
 Update the version number at the top of CLAUDE.md:
 
@@ -41,20 +41,20 @@ Update the version number at the top of CLAUDE.md:
 > Version: X.Y.Z
 ```
 
-### Step 6: Commit changes
+### Step 5: Commit changes
 
 ```bash
 git add .claude-plugin/plugin.json CLAUDE.md
 git commit -m "chore: bump version to vX.Y.Z"
 ```
 
-### Step 7: Push branch
+### Step 6: Push branch
 
 ```bash
 git push -u origin release/vX.Y.Z
 ```
 
-### Step 8: Create PR
+### Step 7: Create PR
 
 Use the gh command to create a PR:
 
@@ -74,7 +74,7 @@ EOF
 )"
 ```
 
-### Step 9: Report results
+### Step 8: Report results
 
 Tell the user:
 - New version number

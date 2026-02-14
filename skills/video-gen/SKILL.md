@@ -40,11 +40,12 @@ uv run skills/video-gen/video-gen.py "MODEL" "PROMPT" "SIZE" "SECONDS" "OUTPUT_D
 Parameters:
 
 1. `MODEL`: `auto` (recommended), `veo-3.1`, `sora-2-pro`, `kling-v3-pro`, `kling-v3-standard`
-2. `SIZE`: `720P`, `1080P`, `1280x720`, `720x1280`
-3. `OUTPUT_DIR`: output directory — **default to `$MAX_PROJECT_PATH`** (the user's project root)
+2. `PROMPT`: video description
+3. `SIZE`: `720P`, `1080P`, `1280x720`, `720x1280`
 4. `SECONDS`: e.g. `8` or `8s`
-5. `INPUT_IMAGE`: legacy param, equivalent to `--start-image`
-6. `--frame-mode`
+5. `OUTPUT_DIR`: output directory — **default to `$MAX_PROJECT_PATH`** (the user's project root)
+6. `INPUT_IMAGE`: legacy param, equivalent to `--start-image`
+7. `--frame-mode`
    - `auto`: automatically uses first/last frame when `--end-image` is provided
    - `start`: start-frame image-to-video only
    - `start-end`: force first/last frame (both images required)
