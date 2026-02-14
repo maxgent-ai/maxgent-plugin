@@ -78,4 +78,7 @@ uv run skills/video-gen/video-gen.py --model auto --prompt "smooth transition fr
 2. Use AskUserQuestion to collect: prompt, duration, resolution, first/last frame option, quality tier. Default output path to `$MAX_PROJECT_PATH`.
 3. For local images, the script auto-uploads via proxy to get an accessible URL.
 4. Wait for queue completion and download the output mp4.
-5. Return the saved path and failure reason if any (timeout / quota / invalid input).
+5. On success, report the saved path.
+6. On failure:
+   - **HTTP 402 (insufficient credits)**: **Stop immediately. Do NOT retry.** Tell the user their API credits are exhausted.
+   - Other errors: retry once with a different model or adjusted parameters. If it fails again, stop and report the error.

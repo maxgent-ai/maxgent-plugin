@@ -63,4 +63,7 @@ bun skills/media-understand/media-understand.js --media ./meeting.m4a --prompt "
 2. Identify media type and validate size limits.
 3. Analyze using the default route; override the model with `--model` if needed.
 4. Local images/videos/audio are auto-uploaded via FAL upload proxy before analysis.
-5. Return readable text on success; on failure, clearly indicate whether it's an upload / proxy / model parameter issue.
+5. On success, return readable text.
+6. On failure:
+   - **HTTP 402 (insufficient credits)**: **Stop immediately. Do NOT retry.** Tell the user their API credits are exhausted.
+   - Other errors: retry once with a different model. If it fails again, stop and clearly indicate whether it's an upload / proxy / model parameter issue.
