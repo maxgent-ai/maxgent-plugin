@@ -20,33 +20,37 @@ Generate or edit images via Maxgent FAL API proxy.
 ## Usage
 
 ```bash
-bun skills/image-gen/image-gen.js "MODEL" "PROMPT" "ASPECT_RATIO" NUM_IMAGES "OUTPUT_DIR" "INPUT_IMAGE" [--output-format FORMAT] [--seed N] [--guidance-scale X] [--steps N]
+bun skills/image-gen/image-gen.js \
+  --model MODEL --prompt "PROMPT" --aspect-ratio RATIO \
+  --num-images N --output-dir DIR \
+  [--input-image PATH] [--output-format FORMAT] \
+  [--seed N] [--guidance-scale X] [--steps N]
 ```
 
 Parameters:
 
-1. `MODEL`
-   - Recommended: `auto`
-   - Legacy aliases: `gemini-pro`, `seedream`
-   - Direct endpoint aliases: `gpt-image-1.5`, `nano-banana-pro`, `flux-dev`
-2. `PROMPT`: image description or editing instruction
-3. `ASPECT_RATIO`: `1:1`, `4:3`, `3:4`, `16:9`, `9:16`
-4. `NUM_IMAGES`: number of images to generate
-5. `OUTPUT_DIR`: output directory — **default to `$MAX_PROJECT_PATH`** (the user's project root)
-6. `INPUT_IMAGE`: optional, for image editing mode
-7. `--output-format`: `png|jpg|webp`
+- `--model`: `auto` (recommended), `gpt-image-1.5`, `nano-banana-pro`, `flux-dev`
+- `--prompt`: image description or editing instruction
+- `--aspect-ratio`: `1:1`, `4:3`, `3:4`, `16:9`, `9:16`
+- `--num-images`: number of images to generate (default `1`)
+- `--output-dir`: output directory — **default to `$MAX_PROJECT_PATH`** (the user's project root)
+- `--input-image`: optional, for image editing mode
+- `--output-format`: `png`, `jpg`, `webp` (default `png`)
+- `--seed`: random seed for reproducibility
+- `--guidance-scale`: guidance scale for supported models
+- `--steps`: number of inference steps for supported models
 
 ## Examples
 
 ```bash
 # Default routing, text-to-image
-bun skills/image-gen/image-gen.js auto "a cat under the starry sky" "1:1" 1 "$MAX_PROJECT_PATH"
+bun skills/image-gen/image-gen.js --model auto --prompt "a cat under the starry sky" --aspect-ratio "1:1" --output-dir "$MAX_PROJECT_PATH"
 
-# Specify model (optional)
-bun skills/image-gen/image-gen.js gpt-image-1.5 "modern building facade, cinematic" "16:9" 2 "$MAX_PROJECT_PATH"
+# Specify model
+bun skills/image-gen/image-gen.js --model gpt-image-1.5 --prompt "modern building facade, cinematic" --aspect-ratio "16:9" --num-images 2 --output-dir "$MAX_PROJECT_PATH"
 
 # Image editing
-bun skills/image-gen/image-gen.js auto "change background to a beach at sunset" "1:1" 1 "$MAX_PROJECT_PATH" "/path/to/input.jpg"
+bun skills/image-gen/image-gen.js --model auto --prompt "change background to a beach at sunset" --aspect-ratio "1:1" --output-dir "$MAX_PROJECT_PATH" --input-image "/path/to/input.jpg"
 ```
 
 ## Instructions

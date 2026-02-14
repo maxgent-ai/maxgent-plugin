@@ -10,7 +10,7 @@ AI Video Generator (FAL API Proxy)
 Features:
 - High-quality routing by default (Veo 3.1 / Sora 2 Pro / Kling v3 Pro)
 - First/last frame generation mode
-- Backward compatibility with existing positional arguments
+- All arguments are named flags (--model, --prompt, etc.)
 """
 
 from __future__ import annotations
@@ -77,16 +77,14 @@ ROUTES = {
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="AI Video Generator (FAL API Proxy)")
-    parser.add_argument("model", nargs="?", default="auto", help="Model alias: auto/veo-3.1/sora-2-pro/kling-v3-pro")
-    parser.add_argument("prompt", nargs="?", default="A cat sitting on a windowsill", help="Video prompt")
-    parser.add_argument("size", nargs="?", default="720P", help="Resolution or WxH, e.g. 720P / 1280x720")
-    parser.add_argument("seconds", nargs="?", default="8", help="Duration in seconds (or with suffix, e.g. 8s)")
-    parser.add_argument("output_dir", nargs="?", default=".", help="Output directory")
-    parser.add_argument("input_image", nargs="?", default="", help="Backward-compatible start image path")
-
-    parser.add_argument("--frame-mode", default="auto", help="Frame mode: auto|start|start-end")
+    parser.add_argument("--model", default="auto", help="Model alias: auto/veo-3.1/sora-2-pro/kling-v3-pro")
+    parser.add_argument("--prompt", required=True, help="Video prompt")
+    parser.add_argument("--size", default="720P", help="Resolution or WxH, e.g. 720P / 1280x720")
+    parser.add_argument("--seconds", default="8", help="Duration in seconds (or with suffix, e.g. 8s)")
+    parser.add_argument("--output-dir", default=".", help="Output directory")
     parser.add_argument("--start-image", default="", help="Start frame image path or URL")
     parser.add_argument("--end-image", default="", help="End frame image path or URL")
+    parser.add_argument("--frame-mode", default="auto", help="Frame mode: auto|start|start-end")
     parser.add_argument("--fast-first-last", action="store_true", help="Use Veo fast first/last route")
     parser.add_argument("--generate-audio", default="true", help="Enable audio when model supports it")
     parser.add_argument("--enhance-prompt", default="true", help="Enable prompt enhancement when supported")
@@ -143,7 +141,7 @@ def parse_size_to_aspect_and_resolution(size: str) -> tuple[str, str]:
     return "16:9", "720p"
 
 
-def parse_duration(seconds: str, model_path: str) -> str:
+def parse_duration(seconds: str, model_path: str) -> str | int:
     raw = seconds.strip().lower()
     if not raw:
         raw = "8"
@@ -152,13 +150,13 @@ def parse_duration(seconds: str, model_path: str) -> str:
     else:
         numeric = raw
     try:
-        int(numeric)
+        value = int(numeric)
     except ValueError as exc:
         raise ValueError(f"Invalid duration: {seconds}") from exc
 
     if "veo3.1" in model_path:
-        return f"{numeric}s"
-    return numeric
+        return f"{value}s"
+    return value
 
 
 def resolve_model_key(model: str) -> str:
@@ -296,7 +294,7 @@ def main() -> None:
     frame_mode = normalize_frame_mode(args.frame_mode)
     model_key = resolve_model_key(args.model)
 
-    start_image_input = args.start_image or args.input_image
+    start_image_input = args.start_image
     end_image_input = args.end_image
     has_start = bool(start_image_input)
     has_end = bool(end_image_input)

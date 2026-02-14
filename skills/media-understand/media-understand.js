@@ -9,16 +9,21 @@ import {
   parseOptions,
 } from "../_shared/fal-client.js";
 
-const MEDIA_PATH = process.argv[2];
-const PROMPT = process.argv[3] || "Please describe this content";
-const LANGUAGE = process.argv[4] || "chinese";
+const opts = parseOptions(process.argv.slice(2));
 
-const options = parseOptions(process.argv.slice(5));
+if (!opts.media) {
+  console.error("Error: --media is required\nUsage: bun media-understand.js --media <path_or_url> --prompt \"...\" [--language chinese|english]");
+  process.exit(1);
+}
+
+const MEDIA_PATH = opts.media;
+const PROMPT = opts.prompt || "Please describe this content";
+const LANGUAGE = opts.language || "chinese";
 const DEFAULT_MM_MODEL = String(
-  options.model || process.env.DEFAULT_MM_MODEL || "google/gemini-2.5-pro"
+  opts.model || process.env.DEFAULT_MM_MODEL || "google/gemini-2.5-pro"
 );
-const MAX_TOKENS = Number(options["max-tokens"] || process.env.MEDIA_MAX_TOKENS || 4096);
-const TEMPERATURE = Number(options.temperature || process.env.MEDIA_TEMPERATURE || 0.2);
+const MAX_TOKENS = Number(opts["max-tokens"] || process.env.MEDIA_MAX_TOKENS || 4096);
+const TEMPERATURE = Number(opts.temperature || process.env.MEDIA_TEMPERATURE || 0.2);
 
 const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "webp"]);
 const VIDEO_EXTS = new Set(["mp4", "mpeg", "mov", "webm"]);
@@ -53,7 +58,7 @@ function getMediaType(filePath) {
 
 function assertInputValid(mediaPath, mediaType) {
   if (!mediaPath || !mediaType) {
-    throw new Error("Usage: bun media-understand.js <media_path_or_url> [prompt] [language] [--model MODEL_ID]");
+    throw new Error("Usage: bun media-understand.js --media <path_or_url> --prompt <text> [--language chinese|english] [--model MODEL_ID]");
   }
 
   if (mediaType === "youtube") return;

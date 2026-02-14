@@ -3,14 +3,15 @@
 Skill Initializer - Creates a new skill from template
 
 Usage:
-    init_skill.py <skill-name> --path <path>
+    init_skill.py --name <skill-name> --path <path>
 
 Examples:
-    init_skill.py my-new-skill --path skills/public
-    init_skill.py my-api-helper --path skills/private
-    init_skill.py custom-skill --path /custom/location
+    init_skill.py --name my-new-skill --path skills/public
+    init_skill.py --name my-api-helper --path skills/private
+    init_skill.py --name custom-skill --path /custom/location
 """
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -287,27 +288,19 @@ def init_skill(skill_name, path):
 
 
 def main():
-    if len(sys.argv) < 4 or sys.argv[2] != '--path':
-        print("Usage: init_skill.py <skill-name> --path <path>")
-        print("\nSkill name requirements:")
-        print("  - Kebab-case identifier (e.g., 'my-data-analyzer')")
-        print("  - Lowercase letters, digits, and hyphens only")
-        print("  - Max 64 characters")
-        print("  - Must match directory name exactly")
-        print("\nExamples:")
-        print("  init_skill.py my-new-skill --path skills/public")
-        print("  init_skill.py my-api-helper --path skills/private")
-        print("  init_skill.py custom-skill --path /custom/location")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Skill Initializer - Creates a new skill from template",
+        epilog="Skill name: kebab-case, lowercase letters/digits/hyphens, max 64 chars.",
+    )
+    parser.add_argument("--name", required=True, help="Skill name (e.g., my-new-skill)")
+    parser.add_argument("--path", required=True, help="Directory where the skill folder will be created")
+    args = parser.parse_args()
 
-    skill_name = sys.argv[1]
-    path = sys.argv[3]
-
-    print(f"Initializing skill: {skill_name}")
-    print(f"   Location: {path}")
+    print(f"Initializing skill: {args.name}")
+    print(f"   Location: {args.path}")
     print()
 
-    result = init_skill(skill_name, path)
+    result = init_skill(args.name, args.path)
 
     if result:
         sys.exit(0)
