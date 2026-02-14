@@ -1,6 +1,6 @@
 # Maxgent Plugin
 
-> Version: 0.19.0
+> Version: 0.19.1
 
 A Claude Code plugin for non-technical users, providing automation skills for common operations.
 
