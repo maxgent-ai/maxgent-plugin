@@ -78,7 +78,7 @@ ROUTES = {
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="AI Video Generator (FAL API Proxy)")
     parser.add_argument("--model", default="auto", help="Model alias: auto/veo-3.1/sora-2-pro/kling-v3-pro")
-    parser.add_argument("--prompt", default="A cat sitting on a windowsill", help="Video prompt")
+    parser.add_argument("--prompt", required=True, help="Video prompt")
     parser.add_argument("--size", default="720P", help="Resolution or WxH, e.g. 720P / 1280x720")
     parser.add_argument("--seconds", default="8", help="Duration in seconds (or with suffix, e.g. 8s)")
     parser.add_argument("--output-dir", default=".", help="Output directory")
