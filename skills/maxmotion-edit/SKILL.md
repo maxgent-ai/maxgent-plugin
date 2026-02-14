@@ -79,6 +79,18 @@ If the user asks to move/resize/adjust timing, reply suggesting they do it in th
 }
 ```
 
+### Clip Fields
+
+| field | type | required | description |
+|-------|------|----------|-------------|
+| `id` | string | yes | Unique ID: `clip_<base36-timestamp>_<random6>` |
+| `timing` | object | yes | **`{ from: number, duration: number }`** (frames, NOT flat) |
+| `content` | object | yes | See Content Types below |
+| `style` | object | yes | See Clip Style below |
+| `animation` | object | no | See Clip Animation below |
+
+> **Important:** `from` and `duration` must be nested inside `timing`, not flat on the clip object. Flat `from`/`duration` will crash the renderer.
+
 ### Clip Content Types
 
 | type | fields |
@@ -218,6 +230,16 @@ import { staticFile } from 'remotion';
 <Img src={staticFile('logo.png')} />
 <Video src={staticFile('intro.mp4')} />
 ```
+
+## Validation
+
+After editing `maxmotion.json`, always run validation to catch schema errors:
+
+```bash
+cd <project> && npx maxmotion validate
+```
+
+If validation fails, fix the errors before telling the user the edit is done.
 
 ## Notes
 
